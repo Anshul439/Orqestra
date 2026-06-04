@@ -35,12 +35,17 @@ cmd/cli  ──gRPC──►  cmd/server
 ## Setup
 
 ```bash
-# Create database and apply schema
+# Create database
 createdb -U postgres orchestrator
-psql -U postgres -d orchestrator -f schema.sql
 
 # Copy env config
 cp .env.example .env
+
+# Export DB_URL for the migrate CLI
+export $(grep '^DB_URL=' .env | xargs)
+
+# Apply migrations
+migrate -path migrations -database "$DB_URL" up
 ```
 
 ## Configuration
@@ -54,6 +59,32 @@ cp .env.example .env
 | `REDIS_DB`        | `0`                  | Redis DB index                     |
 | `REDIS_QUEUE_NAME`| `jobs`               | Redis key prefix for queues        |
 | `GRPC_ADDR`       | `:50051`             | gRPC server listen address         |
+
+## Migrations
+
+Create a new migration:
+
+```bash
+migrate create -ext sql -dir migrations -seq <name>
+```
+
+Apply all pending migrations:
+
+```bash
+migrate -path migrations -database "$DB_URL" up
+```
+
+Roll back the most recent migration:
+
+```bash
+migrate -path migrations -database "$DB_URL" down 1
+```
+
+Check the current migration version:
+
+```bash
+migrate -path migrations -database "$DB_URL" version
+```
 
 ## Running
 
