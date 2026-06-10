@@ -142,7 +142,6 @@ func (q *RedisQueue) Enqueue(
 	return err
 }
 
-
 func (q *RedisQueue) Consume(
 	ctx context.Context,
 ) (Job, error) {
@@ -317,6 +316,21 @@ func (q *RedisQueue) Fail(
 
 	_, err := pipe.Exec(ctx)
 
+	return err
+}
+
+func (q *RedisQueue) Cancel(ctx context.Context, job Job) error {
+	jobID := strconv.Itoa(job.ID)
+
+	pipe := q.client.TxPipeline()
+
+	pipe.LRem(ctx, q.readyKey, 1, jobID)      // remove from main queue (if pending)
+	pipe.LRem(ctx, q.processingKey, 1, jobID) // remove from processing (if running)
+	pipe.SRem(ctx, q.queuedSetKey, jobID)
+	pipe.HDel(ctx, q.payloadKey, jobID)
+	pipe.ZRem(ctx, q.delayedKey, jobID)
+
+	_, err := pipe.Exec(ctx)
 	return err
 }
 

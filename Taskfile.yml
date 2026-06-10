@@ -84,3 +84,10 @@ tasks:
       STATUS: '{{default "" .STATUS}}'
     cmds:
       - go run ./cmd/cli list --status={{.STATUS}}
+
+  cli:cancel:
+    desc: Cancel a job by ID
+    requires:
+      vars: [ID]
+    cmds:
+      - go run ./cmd/cli cancel {{.ID}}

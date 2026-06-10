@@ -18,6 +18,7 @@ func usage() {
 	fmt.Println("  go run ./cmd/cli submit [--type=<type>] [--payload=<json>] [--retries=<n>]")
 	fmt.Println("  go run ./cmd/cli status <job-id>")
 	fmt.Println("  go run ./cmd/cli list [--status=<status>]")
+	fmt.Println("  go run ./cmd/cli cancel <job-id>")
 }
 
 func grpcTarget() string {
@@ -110,6 +111,26 @@ func main() {
 			fmt.Printf("job %d (%s): status=%s retries=%d/%d\n",
 				j.JobId, j.Type, j.Status, j.RetryCount, j.MaxRetries)
 		}
+
+	case "cancel":
+		if len(os.Args) < 3 {
+			fmt.Println("error: missing job id")
+			usage()
+			os.Exit(1)
+		}
+
+		id, err := strconv.Atoi(os.Args[2])
+		if err != nil {
+			fmt.Println("error: job id must be a number")
+			os.Exit(1)
+		}
+
+		resp, err := client.CancelJob(context.Background(), &pb.CancelJobRequest{JobId: int32(id)})
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("job %d cancelled\n", resp.JobId)
 
 	default:
 		fmt.Printf("error: unknown command %q\n", os.Args[1])

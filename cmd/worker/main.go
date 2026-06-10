@@ -76,7 +76,7 @@ func runWorker(ctx context.Context, client pb.OrchestratorServiceClient, id int,
 		)
 
 		// simulate work
-		time.Sleep(2 * time.Second)
+		time.Sleep(7 * time.Second)
 
 		log.Info("simulating job execution",
 			slog.Int("job_id", int(task.JobId)),

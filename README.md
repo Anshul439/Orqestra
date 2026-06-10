@@ -6,13 +6,14 @@ A distributed job orchestrator built in Go. The server coordinates job assignmen
 
 - gRPC API for job submission and status queries
 - Job type and payload — route different kinds of work to appropriate handlers
-- CLI client (`cmd/cli`) for submitting, inspecting, and listing jobs
+- CLI client (`cmd/cli`) for submitting, inspecting, listing, and cancelling jobs
 - Distributed workers (`cmd/worker`) — separate processes communicating with the server via bidirectional gRPC streaming
 - Redis-backed queue with reliable delivery (`BRPOPLPUSH` pattern)
 - Postgres-backed job persistence
 - Exponential backoff retry with configurable max retries
 - Crash recovery — in-flight jobs are automatically re-queued when a worker disconnects unexpectedly, no server restart needed
 - Delayed job scheduling via Redis sorted sets
+- Job cancellation — cancel pending or running jobs via CLI
 - Structured logging (`log/slog`)
 - Graceful shutdown
 
@@ -135,6 +136,9 @@ go run ./cmd/cli list --status=pending
 go run ./cmd/cli list --status=running
 go run ./cmd/cli list --status=completed
 go run ./cmd/cli list --status=failed
+
+# Cancel a job
+go run ./cmd/cli cancel <job-id>
 ```
 
 Example output:

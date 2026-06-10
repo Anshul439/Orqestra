@@ -22,6 +22,7 @@ const (
 	OrchestratorService_SubmitJob_FullMethodName = "/orchestrator.OrchestratorService/SubmitJob"
 	OrchestratorService_GetJob_FullMethodName    = "/orchestrator.OrchestratorService/GetJob"
 	OrchestratorService_ListJobs_FullMethodName  = "/orchestrator.OrchestratorService/ListJobs"
+	OrchestratorService_CancelJob_FullMethodName = "/orchestrator.OrchestratorService/CancelJob"
 	OrchestratorService_Work_FullMethodName      = "/orchestrator.OrchestratorService/Work"
 )
 
@@ -32,6 +33,7 @@ type OrchestratorServiceClient interface {
 	SubmitJob(ctx context.Context, in *SubmitJobRequest, opts ...grpc.CallOption) (*SubmitJobResponse, error)
 	GetJob(ctx context.Context, in *GetJobRequest, opts ...grpc.CallOption) (*GetJobResponse, error)
 	ListJobs(ctx context.Context, in *ListJobsRequest, opts ...grpc.CallOption) (*ListJobsResponse, error)
+	CancelJob(ctx context.Context, in *CancelJobRequest, opts ...grpc.CallOption) (*CancelJobResponse, error)
 	// Work is a bidirectional stream — worker sends ready/result, server sends job assignments.
 	Work(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[WorkerMessage, ServerMessage], error)
 }
@@ -74,6 +76,16 @@ func (c *orchestratorServiceClient) ListJobs(ctx context.Context, in *ListJobsRe
 	return out, nil
 }
 
+func (c *orchestratorServiceClient) CancelJob(ctx context.Context, in *CancelJobRequest, opts ...grpc.CallOption) (*CancelJobResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CancelJobResponse)
+	err := c.cc.Invoke(ctx, OrchestratorService_CancelJob_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *orchestratorServiceClient) Work(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[WorkerMessage, ServerMessage], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	stream, err := c.cc.NewStream(ctx, &OrchestratorService_ServiceDesc.Streams[0], OrchestratorService_Work_FullMethodName, cOpts...)
@@ -94,6 +106,7 @@ type OrchestratorServiceServer interface {
 	SubmitJob(context.Context, *SubmitJobRequest) (*SubmitJobResponse, error)
 	GetJob(context.Context, *GetJobRequest) (*GetJobResponse, error)
 	ListJobs(context.Context, *ListJobsRequest) (*ListJobsResponse, error)
+	CancelJob(context.Context, *CancelJobRequest) (*CancelJobResponse, error)
 	// Work is a bidirectional stream — worker sends ready/result, server sends job assignments.
 	Work(grpc.BidiStreamingServer[WorkerMessage, ServerMessage]) error
 	mustEmbedUnimplementedOrchestratorServiceServer()
@@ -114,6 +127,9 @@ func (UnimplementedOrchestratorServiceServer) GetJob(context.Context, *GetJobReq
 }
 func (UnimplementedOrchestratorServiceServer) ListJobs(context.Context, *ListJobsRequest) (*ListJobsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListJobs not implemented")
+}
+func (UnimplementedOrchestratorServiceServer) CancelJob(context.Context, *CancelJobRequest) (*CancelJobResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CancelJob not implemented")
 }
 func (UnimplementedOrchestratorServiceServer) Work(grpc.BidiStreamingServer[WorkerMessage, ServerMessage]) error {
 	return status.Error(codes.Unimplemented, "method Work not implemented")
@@ -193,6 +209,24 @@ func _OrchestratorService_ListJobs_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _OrchestratorService_CancelJob_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CancelJobRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OrchestratorServiceServer).CancelJob(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: OrchestratorService_CancelJob_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OrchestratorServiceServer).CancelJob(ctx, req.(*CancelJobRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _OrchestratorService_Work_Handler(srv interface{}, stream grpc.ServerStream) error {
 	return srv.(OrchestratorServiceServer).Work(&grpc.GenericServerStream[WorkerMessage, ServerMessage]{ServerStream: stream})
 }
@@ -218,6 +252,10 @@ var OrchestratorService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListJobs",
 			Handler:    _OrchestratorService_ListJobs_Handler,
+		},
+		{
+			MethodName: "CancelJob",
+			Handler:    _OrchestratorService_CancelJob_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

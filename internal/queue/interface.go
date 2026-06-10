@@ -15,5 +15,6 @@ type Queue interface {
 	Ack(ctx context.Context, job Job) error
 	Retry(ctx context.Context, job Job, delay time.Duration) error
 	Fail(ctx context.Context, job Job) error
+	Cancel(ctx context.Context, job Job) error
 	Close() error
 }

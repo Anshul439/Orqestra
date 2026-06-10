@@ -2,13 +2,14 @@ package server
 
 import (
 	"context"
+	"fmt"
+	"math"
+	"time"
 
 	"github.com/anshul439/go-orchestrator/internal/db"
 	"github.com/anshul439/go-orchestrator/internal/queue"
 	pb "github.com/anshul439/go-orchestrator/proto"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"math"
-	"time"
 )
 
 // Server implements the generated OrchestratorServiceServer interface.
@@ -101,18 +102,19 @@ func (s *Server) Work(stream pb.OrchestratorService_WorkServer) error {
 func (s *Server) handleResult(ctx context.Context, result *pb.TaskResult) {
 	jobID := int(result.JobId)
 
-	if result.Success {
-		row, err := db.GetJob(s.db, jobID)
-		if err != nil {
-			return
-		}
-		s.queue.Ack(ctx, queue.Job{ID: jobID})
-		db.UpdateJobState(s.db, jobID, "completed", row.RetryCount)
+	row, err := db.GetJob(s.db, jobID)
+	if err != nil {
 		return
 	}
 
-	row, err := db.GetJob(s.db, jobID)
-	if err != nil {
+	// Job was cancelled while the worker was still executing — ignore the result.
+	if row.Status == "cancelled" {
+		return
+	}
+
+	if result.Success {
+		s.queue.Ack(ctx, queue.Job{ID: jobID})
+		db.UpdateJobState(s.db, jobID, "completed", row.RetryCount)
 		return
 	}
 
@@ -154,4 +156,29 @@ func (s *Server) ListJobs(ctx context.Context, req *pb.ListJobsRequest) (*pb.Lis
 	}
 
 	return &pb.ListJobsResponse{Jobs: resp}, nil
+}
+
+func (s *Server) CancelJob(ctx context.Context, req *pb.CancelJobRequest) (*pb.CancelJobResponse, error) {
+	jobID := int(req.JobId)
+
+	row, err := db.GetJob(s.db, jobID)
+	if err != nil {
+		return nil, err
+	}
+
+	switch row.Status {
+	case "completed", "failed", "cancelled":
+		return nil, fmt.Errorf("job %d cannot be cancelled: status is %s", jobID, row.Status)
+	}
+
+	if err := db.UpdateJobState(s.db, jobID, "cancelled", row.RetryCount); err != nil {
+		return nil, err
+	}
+
+	s.queue.Cancel(ctx, queue.Job{ID: jobID})
+
+	return &pb.CancelJobResponse{
+		JobId:  int32(jobID),
+		Status: "cancelled",
+	}, nil
 }
