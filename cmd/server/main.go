@@ -98,21 +98,10 @@ func main() {
 	}
 
 	registry := workflow.NewRegistry()
-	registry.Register(workflow.Workflow{
-		Name: "backup",
-		Steps: []workflow.Step{
-			{Command: "echo 'step 1: dumping database'"},
-			{Command: "echo 'step 2: compressing backup'"},
-			{Command: "echo 'step 3: uploading to s3'"},
-		},
-	})
-	registry.Register(workflow.Workflow{
-		Name: "ci",
-		Steps: []workflow.Step{
-			{Command: "go vet ./..."},
-			{Command: "go build ./..."},
-		},
-	})
+	if err := workflow.LoadFromDir(registry, "workflows/"); err != nil {
+		log.Error("failed to load workflows", slog.String("error", err.Error()))
+		os.Exit(1)
+	}
 
 	grpcSrv := grpc.NewServer()
 

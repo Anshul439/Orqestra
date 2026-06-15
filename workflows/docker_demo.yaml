@@ -1,0 +1,6 @@
+# Inspects the local Docker environment.
+name: docker_demo
+steps:
+  - command: docker ps
+  - command: docker images
+  - command: docker system df

@@ -10,6 +10,6 @@ FROM gcr.io/distroless/static-debian12 AS server
 COPY --from=builder /server /server
 ENTRYPOINT ["/server"]
 
-FROM gcr.io/distroless/static-debian12 AS worker
+FROM alpine:3 AS worker
 COPY --from=builder /worker /worker
 ENTRYPOINT ["/worker"]

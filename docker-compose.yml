@@ -47,6 +47,8 @@ services:
       REDIS_QUEUE_NAME: jobs
       GRPC_ADDR: :50051
       WORKER_COUNT: "1"
+    volumes:
+      - ./workflows:/workflows
     ports:
       - "50051:50051"
     restart: unless-stopped

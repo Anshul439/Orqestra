@@ -80,11 +80,13 @@ tasks:
       - migrate create -ext sql -dir migrations -seq "{{.NAME}}"
 
   cli:submit:
-    desc: Submit a job
+    desc: Submit a shell job (e.g. task cli:submit PAYLOAD='{"command":"echo hello"}')
+    requires:
+      vars: [PAYLOAD]
     vars:
-      RETRIES: '{{default "3" .RETRIES}}'
+      RETRIES: '{{default "0" .RETRIES}}'
     cmds:
-      - go run ./cmd/cli submit --retries={{.RETRIES}}
+      - go run ./cmd/cli submit --type=shell --payload='{{.PAYLOAD}}' --retries={{.RETRIES}}
 
   cli:status:
     desc: Check job status

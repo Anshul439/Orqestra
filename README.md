@@ -4,13 +4,13 @@ A distributed job orchestrator built in Go. The server coordinates job assignmen
 
 ## Features
 
+- Real command execution — workers run shell commands via `exec.Command`
+- Sequential workflow engine — chain multiple commands into named workflows
 - gRPC API for job submission, inspection, listing, and cancellation
 - CLI client (`cmd/cli`) for submitting, inspecting, listing, and cancelling jobs
 - Distributed workers (`cmd/worker`) — separate processes communicating with the server via bidirectional gRPC streams
 - Redis-backed queue with reliable delivery (`BRPOPLPUSH` pattern)
 - Postgres-backed job persistence
-- Real command execution — workers run shell commands via `exec.Command`
-- Sequential workflow engine — chain multiple commands into named workflows with automatic step progression
 - Exponential backoff retry with configurable max retries
 - Delayed job scheduling via Redis sorted sets
 - Crash recovery — in-flight jobs are automatically re-queued when a worker disconnects unexpectedly, no server restart needed
@@ -133,7 +133,7 @@ task migrate:version
 
 ## Running
 
-The server and workers are separate processes. Start them in separate terminals:
+The server and workers are separate processes. Workers execute shell commands on the machine they run on. Start them in separate terminals:
 
 ```bash
 # Terminal 1 — start the gRPC server
@@ -156,7 +156,7 @@ task dev:worker   # auto-restarts worker on file change
 ## CLI Usage
 
 ```bash
-# Start the server first
+# Start the server
 task server
 
 # Submit a shell command job
@@ -183,36 +183,36 @@ go run ./cmd/cli cancel <job-id>
 
 ## Workflows
 
-Workflows are named sequences of shell commands executed in order. If any step fails, the workflow is marked failed.
+Workflows are named sequences of shell commands executed in order. If any step fails, the workflow stops and is marked `failed`.
+
+Drop `.yaml` files into the `workflows/` directory and restart the server — they are loaded automatically.
 
 ```bash
-# List available workflows
+# List loaded workflows
 go run ./cmd/cli workflow list
 
-# Trigger a workflow
-go run ./cmd/cli workflow trigger backup
+# Trigger a workflow by name
+go run ./cmd/cli workflow trigger <name>
 
-# Check workflow run status
+# Check run status
 go run ./cmd/cli workflow status <run-id>
 ```
 
-Or using task shortcuts:
-```bash
-task workflow:list
-task workflow:trigger NAME=backup
-task workflow:status ID=1
+**Workflow file format:**
+
+```yaml
+name: ci
+steps:
+  - command: go test ./...
+  - command: go build ./...
 ```
 
-Example output:
-```
-backup               (3 steps)
-ci                   (2 steps)
+Example use cases: CI pipelines, database backups, Docker deployments, scheduled maintenance tasks, sequential data processing.
 
-workflow triggered, run id: 1
-run 1 (backup): status=completed step=3/3
-```
+Example workflows are included in `workflows/`. Edit or delete them and add your own.
 
-Workflows are currently registered in `cmd/server/main.go`. YAML-based workflow definitions are planned.
+**Using Docker?** The `workflows/` directory is volume-mounted into the server container. Add a workflow file and run `docker compose restart server` — no rebuild needed.
+
 
 The CLI reads `GRPC_ADDR` too. If it is set to a listen-style value like `:50051`,
 the CLI treats it as `localhost:50051`.
