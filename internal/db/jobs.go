@@ -6,44 +6,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func InsertJob(
-	conn *pgxpool.Pool,
-	maxRetries int,
-	jobType string,
-	payload string,
-) (int, error) {
-
-	var jobID int
-
-	query := `
-		INSERT INTO jobs (
-			status,
-			retry_count,
-			max_retries,
-			type,
-			payload
-		)
-		VALUES ($1, $2, $3, $4, $5)
-		RETURNING id
-	`
-
-	err := conn.QueryRow(
-		context.Background(),
-		query,
-		"pending",
-		0,
-		maxRetries,
-		jobType,
-		payload,
-	).Scan(&jobID)
-
-	if err != nil {
-		return 0, err
-	}
-
-	return jobID, nil
-}
-
 func UpdateJobState(
 	conn *pgxpool.Pool,
 	jobID int,
@@ -72,24 +34,21 @@ func UpdateJobState(
 	return err
 }
 
-// ResetRunningJobs resets 'running' jobs back to 'pending' after a crash.
-func ResetRunningJobs(
-	conn *pgxpool.Pool,
-) error {
-
-	query := `
-		UPDATE jobs
-		SET
-			status = 'pending',
-			updated_at = NOW()
-		WHERE status = 'running'
-	`
-
-	_, err := conn.Exec(
-		context.Background(),
-		query,
-	)
-
+func ResetRunningJobs(conn *pgxpool.Pool) error {
+	_, err := conn.Exec(context.Background(), `
+		WITH reset AS (
+			UPDATE jobs
+			SET status = 'pending', updated_at = NOW()
+			WHERE status = 'running'
+			RETURNING id
+		)
+		INSERT INTO job_outbox (job_id)
+		SELECT r.id FROM reset r
+		WHERE NOT EXISTS (
+			SELECT 1 FROM job_outbox o
+			WHERE o.job_id = r.id AND o.processed = FALSE
+		)
+	`)
 	return err
 }
 

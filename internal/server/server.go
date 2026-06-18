@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"math"
 	"time"
 
@@ -27,16 +28,10 @@ func New(db *pgxpool.Pool, q queue.Queue, registry *workflow.Registry) *Server {
 }
 
 func (s *Server) SubmitJob(ctx context.Context, req *pb.SubmitJobRequest) (*pb.SubmitJobResponse, error) {
-	jobID, err := db.InsertJob(s.db, int(req.MaxRetries), req.Type, req.Payload)
+	jobID, err := db.InsertJob(ctx, s.db, int(req.MaxRetries), req.Type, req.Payload)
 	if err != nil {
 		return nil, err
 	}
-
-	job := queue.Job{ID: jobID, MaxRetries: int(req.MaxRetries), Type: req.Type, Payload: req.Payload}
-	if err := s.queue.Enqueue(ctx, job); err != nil {
-		return nil, err
-	}
-
 	return &pb.SubmitJobResponse{JobId: int32(jobID)}, nil
 }
 
@@ -103,10 +98,12 @@ func (s *Server) Work(stream pb.OrchestratorService_WorkServer) error {
 }
 
 func (s *Server) handleResult(ctx context.Context, result *pb.TaskResult) {
+	log := slog.Default()
 	jobID := int(result.JobId)
 
 	row, err := db.GetJob(s.db, jobID)
 	if err != nil {
+		log.Error("handleResult: failed to get job", slog.Int("job_id", jobID), slog.String("error", err.Error()))
 		return
 	}
 
@@ -116,7 +113,9 @@ func (s *Server) handleResult(ctx context.Context, result *pb.TaskResult) {
 
 	if result.Success {
 		s.queue.Ack(ctx, queue.Job{ID: jobID})
-		db.UpdateJobState(s.db, jobID, "completed", row.RetryCount)
+		if err := db.UpdateJobState(s.db, jobID, "completed", row.RetryCount); err != nil {
+			log.Error("handleResult: failed to mark job completed", slog.Int("job_id", jobID), slog.String("error", err.Error()))
+		}
 
 		if row.WorkflowRunID != nil {
 			s.advanceWorkflow(ctx, *row.WorkflowRunID, *row.StepIndex)
@@ -135,14 +134,20 @@ func (s *Server) handleResult(ctx context.Context, result *pb.TaskResult) {
 	if job.RetryCount < job.MaxRetries {
 		job.RetryCount++
 		delay := time.Duration(math.Pow(2, float64(job.RetryCount))) * time.Second
-		db.UpdateJobState(s.db, job.ID, "retrying", job.RetryCount)
+		if err := db.UpdateJobState(s.db, job.ID, "retrying", job.RetryCount); err != nil {
+			log.Error("handleResult: failed to mark job retrying", slog.Int("job_id", job.ID), slog.String("error", err.Error()))
+		}
 		s.queue.Retry(ctx, job, delay)
 	} else {
-		db.UpdateJobState(s.db, job.ID, "failed", job.RetryCount)
+		if err := db.UpdateJobState(s.db, job.ID, "failed", job.RetryCount); err != nil {
+			log.Error("handleResult: failed to mark job failed", slog.Int("job_id", job.ID), slog.String("error", err.Error()))
+		}
 		s.queue.Fail(ctx, job)
 
 		if row.WorkflowRunID != nil {
-			db.FailWorkflowRun(s.db, *row.WorkflowRunID)
+			if err := db.FailWorkflowRun(s.db, *row.WorkflowRunID); err != nil {
+				log.Error("handleResult: failed to fail workflow run", slog.Int("run_id", *row.WorkflowRunID), slog.String("error", err.Error()))
+			}
 		}
 	}
 }
@@ -183,6 +188,10 @@ func (s *Server) CancelJob(ctx context.Context, req *pb.CancelJobRequest) (*pb.C
 
 	if err := db.UpdateJobState(s.db, jobID, "cancelled", row.RetryCount); err != nil {
 		return nil, err
+	}
+
+	if err := db.CancelOutboxEntry(ctx, s.db, jobID); err != nil {
+		slog.Default().Error("CancelJob: failed to cancel outbox entry", slog.Int("job_id", jobID), slog.String("error", err.Error()))
 	}
 
 	s.queue.Cancel(ctx, queue.Job{ID: jobID})
@@ -246,40 +255,44 @@ func (s *Server) submitWorkflowStep(ctx context.Context, runID, stepIndex int, w
 		return err
 	}
 
-	jobID, err := db.InsertWorkflowStep(s.db, runID, stepIndex, string(payload))
-	if err != nil {
-		return err
-	}
-
-	return s.queue.Enqueue(ctx, queue.Job{
-		ID:         jobID,
-		MaxRetries: 0,
-		Type:       "shell",
-		Payload:    string(payload),
-	})
+	_, err = db.InsertWorkflowStep(ctx, s.db, runID, stepIndex, string(payload))
+	return err
 }
 
 // advanceWorkflow moves the workflow to the next step or marks it complete/failed.
 func (s *Server) advanceWorkflow(ctx context.Context, runID, completedStepIndex int) {
+	log := slog.Default()
+
 	run, err := db.GetWorkflowRun(s.db, runID)
 	if err != nil {
+		log.Error("advanceWorkflow: failed to get workflow run", slog.Int("run_id", runID), slog.String("error", err.Error()))
 		return
 	}
 
 	nextStep := completedStepIndex + 1
 	if nextStep >= run.TotalSteps {
-		db.AdvanceWorkflowRun(s.db, runID)
-		db.CompleteWorkflowRun(s.db, runID)
+		if err := db.AdvanceWorkflowRun(s.db, runID); err != nil {
+			log.Error("advanceWorkflow: failed to advance run", slog.Int("run_id", runID), slog.String("error", err.Error()))
+		}
+		if err := db.CompleteWorkflowRun(s.db, runID); err != nil {
+			log.Error("advanceWorkflow: failed to complete run", slog.Int("run_id", runID), slog.String("error", err.Error()))
+		}
 		return
 	}
 
-	db.AdvanceWorkflowRun(s.db, runID)
+	if err := db.AdvanceWorkflowRun(s.db, runID); err != nil {
+		log.Error("advanceWorkflow: failed to advance run", slog.Int("run_id", runID), slog.String("error", err.Error()))
+	}
 
 	wf, ok := s.registry.Get(run.WorkflowName)
 	if !ok {
-		db.FailWorkflowRun(s.db, runID)
+		if err := db.FailWorkflowRun(s.db, runID); err != nil {
+			log.Error("advanceWorkflow: failed to fail run", slog.Int("run_id", runID), slog.String("error", err.Error()))
+		}
 		return
 	}
 
-	s.submitWorkflowStep(ctx, runID, nextStep, wf)
+	if err := s.submitWorkflowStep(ctx, runID, nextStep, wf); err != nil {
+		log.Error("advanceWorkflow: failed to submit next step", slog.Int("run_id", runID), slog.Int("step", nextStep), slog.String("error", err.Error()))
+	}
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/anshul439/go-orchestrator/internal/config"
 	"github.com/anshul439/go-orchestrator/internal/db"
 	"github.com/anshul439/go-orchestrator/internal/logger"
+	"github.com/anshul439/go-orchestrator/internal/outbox"
 	"github.com/anshul439/go-orchestrator/internal/queue"
 	"github.com/anshul439/go-orchestrator/internal/server"
 	"github.com/anshul439/go-orchestrator/internal/workflow"
@@ -83,6 +84,7 @@ func main() {
 	}
 
 	q.Start(ctx)
+	go outbox.Start(ctx, poolConn, q)
 
 	lis, err := net.Listen(
 		"tcp",

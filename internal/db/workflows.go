@@ -62,17 +62,3 @@ func FailWorkflowRun(conn *pgxpool.Pool, id int) error {
 	)
 	return err
 }
-
-// InsertWorkflowStep inserts a job linked to a specific workflow run step.
-// payload should be pre-serialized JSON, e.g. {"command":"go test ./..."}
-func InsertWorkflowStep(conn *pgxpool.Pool, workflowRunID, stepIndex int, payload string) (int, error) {
-	var jobID int
-	err := conn.QueryRow(
-		context.Background(),
-		`INSERT INTO jobs (status, retry_count, max_retries, type, payload, workflow_run_id, step_index)
-		 VALUES ('pending', 0, 0, 'shell', $1, $2, $3)
-		 RETURNING id`,
-		payload, workflowRunID, stepIndex,
-	).Scan(&jobID)
-	return jobID, err
-}

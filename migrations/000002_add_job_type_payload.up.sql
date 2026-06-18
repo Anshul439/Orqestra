@@ -1,3 +1,0 @@
-ALTER TABLE jobs 
-  ADD COLUMN type    TEXT NOT NULL DEFAULT 'generic',
-  ADD COLUMN payload TEXT NOT NULL DEFAULT '{}';

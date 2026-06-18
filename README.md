@@ -4,16 +4,17 @@ A distributed job orchestrator built in Go. The server coordinates job assignmen
 
 ## Features
 
-- Real command execution — workers run shell commands via `exec.Command`
-- Sequential workflow engine — chain multiple commands into named workflows
 - gRPC API for job submission, inspection, listing, and cancellation
 - CLI client (`cmd/cli`) for submitting, inspecting, listing, and cancelling jobs
 - Distributed workers (`cmd/worker`) — separate processes communicating with the server via bidirectional gRPC streams
 - Redis-backed queue with reliable delivery (`BRPOPLPUSH` pattern)
+- Transactional outbox pattern — job submissions are crash-safe; a background relay ensures jobs are eventually delivered to Redis
 - Postgres-backed job persistence
+- Real command execution — workers run shell commands via `exec.Command`
+- Sequential workflow engine — chain multiple commands into named workflows
 - Exponential backoff retry with configurable max retries
 - Delayed job scheduling via Redis sorted sets
-- Crash recovery — in-flight jobs are automatically re-queued when a worker disconnects unexpectedly, no server restart needed
+- Crash recovery — jobs interrupted by worker or server failures are automatically re-queued on restart
 - Job cancellation — cancel pending or running jobs via CLI
 - Docker Compose setup — one command to run the full stack
 - Structured logging (`log/slog`)
@@ -25,12 +26,17 @@ A distributed job orchestrator built in Go. The server coordinates job assignmen
 cmd/cli  ──gRPC──►  cmd/server  ◄──gRPC stream──  cmd/worker
                         ├── internal/server     (gRPC handlers + workflow engine)
                         ├── internal/workflow   (workflow registry)
+                        ├── internal/outbox     (relay: Postgres → Redis)
                         ├── internal/queue      (Redis queue)
                         └── internal/db         (Postgres)
 ```
 
 The server and workers are separate processes. Workers connect to the server over a persistent
 bidirectional stream, receive job assignments, execute them, and report results back.
+
+## Reliability
+
+Postgres is the source of truth. Jobs are written to Postgres and an outbox table atomically, then asynchronously relayed to Redis by a background goroutine. This prevents jobs from being lost if the server crashes between the database write and the queue enqueue.
 
 ## Requirements
 
