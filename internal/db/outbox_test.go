@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/anshul439/go-orchestrator/internal/db"
-	"github.com/anshul439/go-orchestrator/internal/testutil"
+	"github.com/Anshul439/Orqestra/internal/db"
+	"github.com/Anshul439/Orqestra/internal/testutil"
 )
 
 func TestGetUnprocessedOutbox_ReturnsOnlyUnprocessed(t *testing.T) {

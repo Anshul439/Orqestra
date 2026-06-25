@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package orchestrator;
 
-option go_package = "github.com/anshul439/go-orchestrator/proto";
+option go_package = "github.com/Anshul439/Orqestra/proto";
 
 message SubmitJobRequest {
   int32  max_retries = 1;

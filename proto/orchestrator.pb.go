@@ -1187,7 +1187,7 @@ const file_proto_orchestrator_proto_rawDesc = "" +
 	"\x0fTriggerWorkflow\x12$.orchestrator.TriggerWorkflowRequest\x1a%.orchestrator.TriggerWorkflowResponse\x12X\n" +
 	"\rListWorkflows\x12\".orchestrator.ListWorkflowsRequest\x1a#.orchestrator.ListWorkflowsResponse\x12d\n" +
 	"\x11GetWorkflowStatus\x12&.orchestrator.GetWorkflowStatusRequest\x1a'.orchestrator.GetWorkflowStatusResponse\x12D\n" +
-	"\x04Work\x12\x1b.orchestrator.WorkerMessage\x1a\x1b.orchestrator.ServerMessage(\x010\x01B,Z*github.com/anshul439/go-orchestrator/protob\x06proto3"
+	"\x04Work\x12\x1b.orchestrator.WorkerMessage\x1a\x1b.orchestrator.ServerMessage(\x010\x01B%Z#github.com/Anshul439/Orqestra/protob\x06proto3"
 
 var (
 	file_proto_orchestrator_proto_rawDescOnce sync.Once

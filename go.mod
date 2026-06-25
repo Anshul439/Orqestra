@@ -1,4 +1,4 @@
-module github.com/anshul439/go-orchestrator
+module github.com/Anshul439/Orqestra
 
 go 1.26.2
 

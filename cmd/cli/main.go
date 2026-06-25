@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	pb "github.com/anshul439/go-orchestrator/proto"
+	pb "github.com/Anshul439/Orqestra/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )

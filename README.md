@@ -1,4 +1,4 @@
-# go-orchestrator
+# Orqestra
 
 A distributed job orchestrator built in Go. The server coordinates job assignment across distributed worker processes via bidirectional gRPC streaming, with Redis-backed queuing and Postgres persistence.
 

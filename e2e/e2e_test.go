@@ -13,12 +13,12 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/test/bufconn"
 
-	"github.com/anshul439/go-orchestrator/internal/outbox"
-	"github.com/anshul439/go-orchestrator/internal/queue"
-	"github.com/anshul439/go-orchestrator/internal/server"
-	"github.com/anshul439/go-orchestrator/internal/testutil"
-	"github.com/anshul439/go-orchestrator/internal/workflow"
-	pb "github.com/anshul439/go-orchestrator/proto"
+	"github.com/Anshul439/Orqestra/internal/outbox"
+	"github.com/Anshul439/Orqestra/internal/queue"
+	"github.com/Anshul439/Orqestra/internal/server"
+	"github.com/Anshul439/Orqestra/internal/testutil"
+	"github.com/Anshul439/Orqestra/internal/workflow"
+	pb "github.com/Anshul439/Orqestra/proto"
 )
 
 func redisAddr() string {
