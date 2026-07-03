@@ -21,10 +21,11 @@ func TestInsertJob_CreatesJobAndOutboxEntry(t *testing.T) {
 		t.Fatalf("expected valid job ID, got %d", jobID)
 	}
 
-	entries, err := db.GetUnprocessedOutbox(ctx, pool)
+	entries, tx, err := db.GetUnprocessedOutbox(ctx, pool)
 	if err != nil {
 		t.Fatalf("GetUnprocessedOutbox: %v", err)
 	}
+	defer tx.Commit(ctx)
 	if len(entries) != 1 || entries[0].JobID != jobID {
 		t.Errorf("expected one outbox entry for job %d, got %+v", jobID, entries)
 	}
@@ -112,18 +113,17 @@ func TestResetRunningJobs_CreatesFreshOutboxEntries(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Simulate a job that has been dispatched and is currently running.
 	jobID, err := db.InsertJob(ctx, pool, 3, "shell", `{}`)
 	if err != nil {
 		t.Fatalf("InsertJob: %v", err)
 	}
 
-	entries, _ := db.GetUnprocessedOutbox(ctx, pool)
-	db.MarkOutboxProcessed(ctx, pool, entries[0].ID)
+	entries, tx, _ := db.GetUnprocessedOutbox(ctx, pool)
+	db.MarkOutboxProcessed(ctx, tx, entries[0].ID)
+	tx.Commit(ctx)
 
 	db.UpdateJobState(pool, jobID, "running", 0)
 
-	// Simulate server crash and restart
 	if err := db.ResetRunningJobs(pool); err != nil {
 		t.Fatalf("ResetRunningJobs: %v", err)
 	}
@@ -136,10 +136,11 @@ func TestResetRunningJobs_CreatesFreshOutboxEntries(t *testing.T) {
 		t.Errorf("Status after reset: got %q, want %q", row.Status, "pending")
 	}
 
-	fresh, err := db.GetUnprocessedOutbox(ctx, pool)
+	fresh, tx2, err := db.GetUnprocessedOutbox(ctx, pool)
 	if err != nil {
 		t.Fatalf("GetUnprocessedOutbox: %v", err)
 	}
+	defer tx2.Commit(ctx)
 	if len(fresh) != 1 || fresh[0].JobID != jobID {
 		t.Errorf("expected fresh outbox entry for job %d, got %+v", jobID, fresh)
 	}

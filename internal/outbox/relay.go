@@ -10,12 +10,33 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-const pollInterval = 2 * time.Second
+const (
+	pollInterval    = 2 * time.Second
+	cleanupInterval = 1 * time.Hour
+	cleanupMaxAge   = 24 * time.Hour
+)
 
-// Start runs the outbox relay loop, polling the outbox table every 2 seconds and
-// forwarding unprocessed entries to the Redis queue. Blocks until ctx is cancelled.
 func Start(ctx context.Context, pool *pgxpool.Pool, q queue.Queue) {
 	log := slog.Default()
+
+	go func() {
+		cleanupTicker := time.NewTicker(cleanupInterval)
+		defer cleanupTicker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-cleanupTicker.C:
+				deleted, err := db.CleanupProcessedOutbox(ctx, pool, cleanupMaxAge)
+				if err != nil {
+					log.Error("outbox cleanup error", slog.String("error", err.Error()))
+				} else if deleted > 0 {
+					log.Info("outbox cleanup complete", slog.Int64("deleted_rows", deleted))
+				}
+			}
+		}
+	}()
+
 	ticker := time.NewTicker(pollInterval)
 	defer ticker.Stop()
 
@@ -32,9 +53,12 @@ func Start(ctx context.Context, pool *pgxpool.Pool, q queue.Queue) {
 }
 
 func relay(ctx context.Context, pool *pgxpool.Pool, q queue.Queue, log *slog.Logger) error {
-	entries, err := db.GetUnprocessedOutbox(ctx, pool)
+	entries, tx, err := db.GetUnprocessedOutbox(ctx, pool)
 	if err != nil {
 		return err
+	}
+	if len(entries) == 0 {
+		return tx.Commit(ctx)
 	}
 
 	for _, e := range entries {
@@ -49,14 +73,18 @@ func relay(ctx context.Context, pool *pgxpool.Pool, q queue.Queue, log *slog.Log
 				slog.Int("job_id", e.JobID),
 				slog.String("error", err.Error()),
 			)
-			continue
+			tx.Rollback(ctx)
+			return err
 		}
-		if err := db.MarkOutboxProcessed(ctx, pool, e.ID); err != nil {
+		if err := db.MarkOutboxProcessed(ctx, tx, e.ID); err != nil {
 			log.Error("failed to mark outbox entry processed",
 				slog.Int("outbox_id", e.ID),
 				slog.String("error", err.Error()),
 			)
+			tx.Rollback(ctx)
+			return err
 		}
 	}
-	return nil
+
+	return tx.Commit(ctx)
 }
