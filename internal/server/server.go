@@ -56,6 +56,7 @@ func (s *Server) Work(stream pb.OrchestratorService_WorkServer) error {
 	for {
 		msg, err := stream.Recv()
 		if err != nil {
+			// worker disconnected mid-job: re-queue so another worker can pick it up
 			if inFlight != nil {
 				db.UpdateJobState(s.db, inFlight.ID, "pending", inFlight.RetryCount)
 				s.queue.Retry(context.Background(), *inFlight, 0)
@@ -65,6 +66,7 @@ func (s *Server) Work(stream pb.OrchestratorService_WorkServer) error {
 
 		switch p := msg.Payload.(type) {
 		case *pb.WorkerMessage_Ready:
+			// worker is idle: dequeue next job and stream it down
 			job, err := s.queue.Consume(stream.Context())
 			if err != nil {
 				return err
@@ -89,6 +91,7 @@ func (s *Server) Work(stream pb.OrchestratorService_WorkServer) error {
 			})
 
 		case *pb.WorkerMessage_Result:
+			// worker finished: clear in-flight and handle success/retry/fail
 			inFlight = nil
 			s.handleResult(stream.Context(), p.Result)
 		}

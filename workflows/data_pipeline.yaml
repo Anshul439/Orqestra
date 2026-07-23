@@ -1,0 +1,6 @@
+name: data_pipeline
+steps:
+  - command: echo "Fetching GitHub profile for Anshul439..."
+  - command: curl -s https://api.github.com/users/Anshul439 > profile.json
+  - command: echo "Extracting public repo count:" && cat profile.json | grep '"public_repos"'
+
