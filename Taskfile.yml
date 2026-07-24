@@ -34,6 +34,11 @@ tasks:
     cmds:
       - go run ./cmd/worker
 
+  cleanup:
+    desc: Wipe Redis queue and Postgres database (use when stuck/deadlocked)
+    cmds:
+      - go run ./cmd/cleanup
+
   dev:server:
     desc: Start server with hot reload
     cmds:
@@ -108,42 +113,34 @@ tasks:
     cmds:
       - go run ./cmd/cli submit --type=shell --payload='{{.PAYLOAD}}' --retries={{.RETRIES}}
 
-  cli:status:
-    desc: Check job status
-    requires:
-      vars: [ID]
+  status:
+    desc: "Check job status. Usage: task status -- <job_id>"
     cmds:
-      - go run ./cmd/cli status {{.ID}}
+      - go run ./cmd/cli status {{.CLI_ARGS}}
 
-  cli:list:
-    desc: List jobs (optional STATUS filter)
+  list:
+    desc: "List jobs (optional STATUS filter). Usage: task list STATUS=pending"
     vars:
       STATUS: '{{default "" .STATUS}}'
     cmds:
       - go run ./cmd/cli list --status={{.STATUS}}
 
-  cli:cancel:
-    desc: Cancel a job by ID
-    requires:
-      vars: [ID]
+  cancel:
+    desc: "Cancel a job by ID. Usage: task cancel -- <job_id>"
     cmds:
-      - go run ./cmd/cli cancel {{.ID}}
+      - go run ./cmd/cli cancel {{.CLI_ARGS}}
 
   workflow:list:
     desc: List all registered workflows
     cmds:
       - go run ./cmd/cli workflow list
 
-  workflow:trigger:
-    desc: Trigger a workflow by name
-    requires:
-      vars: [NAME]
+  trigger:
+    desc: "Trigger a workflow by name. Usage: task trigger -- docker_demo"
     cmds:
-      - go run ./cmd/cli workflow trigger {{.NAME}}
+      - go run ./cmd/cli workflow trigger {{.CLI_ARGS}}
 
   workflow:status:
-    desc: Get workflow run status
-    requires:
-      vars: [ID]
+    desc: "Get workflow run status. Usage: task workflow:status -- <run_id>"
     cmds:
-      - go run ./cmd/cli workflow status {{.ID}}
+      - go run ./cmd/cli workflow status {{.CLI_ARGS}}

@@ -94,10 +94,9 @@ task docker:down
 The server's gRPC port is exposed on `localhost:50051`, so you can still use the CLI from your host machine:
 
 ```bash
-go run ./cmd/cli submit --type=shell --payload='{"command":"echo hello"}'
-go run ./cmd/cli list
+task trigger -- docker_demo
+task list
 ```
-
 
 Postgres and Redis are only accessible within the Docker network. To inspect them directly:
 
@@ -184,29 +183,26 @@ task test:e2e
 ## CLI Usage
 
 ```bash
-# Start the server
-task server
-
 # Submit a shell command job
-go run ./cmd/cli submit --type=shell --payload='{"command":"echo hello world"}'
+task cli:submit PAYLOAD='{"command":"echo hello world"}'
 
 # Submit with retries
-go run ./cmd/cli submit --type=shell --payload='{"command":"go test ./..."}' --retries=3
+task cli:submit PAYLOAD='{"command":"go test ./..."}' RETRIES=3
 
 # Check job status
-go run ./cmd/cli status <job-id>
+task status -- <job-id>
 
 # List all jobs
-go run ./cmd/cli list
+task list
 
 # List jobs filtered by status
-go run ./cmd/cli list --status=pending
-go run ./cmd/cli list --status=running
-go run ./cmd/cli list --status=completed
-go run ./cmd/cli list --status=failed
+task list STATUS=pending
+task list STATUS=running
+task list STATUS=completed
+task list STATUS=failed
 
 # Cancel a job
-go run ./cmd/cli cancel <job-id>
+task cancel -- <job-id>
 ```
 
 ## Workflows
@@ -217,13 +213,16 @@ Drop `.yaml` files into the `workflows/` directory and restart the server — th
 
 ```bash
 # List loaded workflows
-go run ./cmd/cli workflow list
+task workflow:list
 
 # Trigger a workflow by name
-go run ./cmd/cli workflow trigger <name>
+task trigger -- <name>
 
 # Check run status
-go run ./cmd/cli workflow status <run-id>
+task workflow:status -- <run-id>
+
+# Wipe DB + Redis if the system gets stuck (e.g. after running tests against a live DB)
+task cleanup
 ```
 
 **Workflow file format:**
@@ -235,9 +234,15 @@ steps:
   - command: go build ./...
 ```
 
-Example use cases: CI pipelines, database backups, Docker deployments, scheduled maintenance tasks, sequential data processing.
+Example workflows included in `workflows/`:
 
-Example workflows are included in `workflows/`. Edit or delete them and add your own.
+| File | What it does |
+|---|---|
+| `ci.yaml` | Runs `go test ./...` then `go build ./...` |
+| `docker_demo.yaml` | Queries the local Docker daemon (`ps`, `images`, `system df`) |
+| `data_pipeline.yaml` | Hits the GitHub REST API, downloads JSON, and parses a field |
+
+Example use cases: CI pipelines, database backups, Docker deployments, scheduled maintenance tasks, sequential data processing.
 
 **Using Docker?** The `workflows/` directory is volume-mounted into the server container. Add a workflow file and run `docker compose restart server` — no rebuild needed.
 

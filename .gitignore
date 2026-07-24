@@ -1,3 +1,4 @@
 .env
 .gocache/
 tmp/
+profile.json
