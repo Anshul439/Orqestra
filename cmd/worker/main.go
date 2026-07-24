@@ -115,7 +115,9 @@ func executeJob(ctx context.Context, payload string, log *slog.Logger) (bool, st
 
 	output := strings.TrimSpace(string(out))
 	if output != "" {
-		log.Info("command output", slog.String("output", output))
+		for _, line := range strings.Split(output, "\n") {
+			log.Info(line)
+		}
 	}
 
 	if err != nil {
