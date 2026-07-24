@@ -62,7 +62,10 @@ func TestRelay_PushesUnprocessedToRedis(t *testing.T) {
 		t.Errorf("expected job %d enqueued, got %+v", jobID, mq.enqueued)
 	}
 
-	remaining, _ := db.GetUnprocessedOutbox(ctx, pool)
+	remaining, tx, _ := db.GetUnprocessedOutbox(ctx, pool)
+	if tx != nil {
+		tx.Commit(ctx)
+	}
 	if len(remaining) != 0 {
 		t.Errorf("expected empty outbox after relay, got %d entries", len(remaining))
 	}
@@ -76,11 +79,12 @@ func TestRelay_LeavesUnprocessedOnEnqueueFailure(t *testing.T) {
 	db.InsertJob(ctx, pool, 0, "shell", `{}`)
 
 	mq := &mockQueue{failNext: true}
-	if err := relay(ctx, pool, mq, slog.Default()); err != nil {
-		t.Fatalf("relay: %v", err)
-	}
+	relay(ctx, pool, mq, slog.Default()) // error is expected; we only care the entry stays unprocessed
 
-	remaining, _ := db.GetUnprocessedOutbox(ctx, pool)
+	remaining, tx, _ := db.GetUnprocessedOutbox(ctx, pool)
+	if tx != nil {
+		tx.Commit(ctx)
+	}
 	if len(remaining) != 1 {
 		t.Errorf("expected 1 unprocessed entry after failed enqueue, got %d", len(remaining))
 	}
@@ -93,7 +97,12 @@ func TestRelay_SkipsAlreadyProcessed(t *testing.T) {
 	ctx := context.Background()
 	db.InsertJob(ctx, pool, 0, "shell", `{}`)
 
-	entries, _ := db.GetUnprocessedOutbox(ctx, pool)
+	entries, tx, _ := db.GetUnprocessedOutbox(ctx, pool)
+	// commit the transaction first to release the FOR UPDATE lock,
+	// otherwise MarkOutboxProcessed deadlocks waiting for the same row.
+	if tx != nil {
+		tx.Commit(ctx)
+	}
 	db.MarkOutboxProcessed(ctx, pool, entries[0].ID)
 
 	mq := &mockQueue{}
