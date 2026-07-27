@@ -35,7 +35,7 @@ tasks:
       - go run ./cmd/worker
 
   cleanup:
-    desc: Wipe Redis queue and Postgres database (use when stuck/deadlocked)
+    desc: Wipe Redis queue and Postgres tables for a local reset
     cmds:
       - go run ./cmd/cleanup
 
@@ -104,12 +104,22 @@ tasks:
     cmds:
       - migrate create -ext sql -dir migrations -seq "{{.NAME}}"
 
+  submit:
+    desc: 'Submit a shell command (e.g. task submit -- "sleep 30")'
+    vars:
+      COMMAND: '{{.CLI_ARGS}}'
+      RETRIES: '{{default "3" .RETRIES}}'
+    env:
+      COMMAND: '{{.COMMAND}}'
+    cmds:
+      - go run ./cmd/cli submit --type=shell --command "$COMMAND" --retries={{.RETRIES}}
+
   cli:submit:
-    desc: Submit a shell job (e.g. task cli:submit PAYLOAD='{"command":"echo hello"}')
+    desc: 'Submit a raw JSON payload job (advanced)'
     requires:
       vars: [PAYLOAD]
     vars:
-      RETRIES: '{{default "0" .RETRIES}}'
+      RETRIES: '{{default "3" .RETRIES}}'
     cmds:
       - go run ./cmd/cli submit --type=shell --payload='{{.PAYLOAD}}' --retries={{.RETRIES}}
 
@@ -123,7 +133,7 @@ tasks:
     vars:
       STATUS: '{{default "" .STATUS}}'
     cmds:
-      - go run ./cmd/cli list --status={{.STATUS}}
+      - '{{if .STATUS}}go run ./cmd/cli list --status={{.STATUS}}{{else}}go run ./cmd/cli list{{end}}'
 
   cancel:
     desc: "Cancel a job by ID. Usage: task cancel -- <job_id>"

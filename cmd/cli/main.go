@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -15,7 +16,7 @@ import (
 
 func usage() {
 	fmt.Println("usage:")
-	fmt.Println("  go run ./cmd/cli submit [--type=<type>] [--payload=<json>] [--retries=<n>]")
+	fmt.Println("  go run ./cmd/cli submit [--type=<type>] [--command=<shell>] [--payload=<json>] [--retries=<n>]")
 	fmt.Println("  go run ./cmd/cli status <job-id>")
 	fmt.Println("  go run ./cmd/cli list [--status=<status>]")
 	fmt.Println("  go run ./cmd/cli cancel <job-id>")
@@ -63,8 +64,23 @@ func main() {
 		submitFlags := flag.NewFlagSet("submit", flag.ExitOnError)
 		retries := submitFlags.Int("retries", 3, "max retry count")
 		jobType := submitFlags.String("type", "generic", "job type")
+		command := submitFlags.String("command", "", "shell command to execute")
 		payload := submitFlags.String("payload", "{}", "job payload as JSON string")
 		submitFlags.Parse(os.Args[2:])
+
+		if *command != "" {
+			payloadBytes, err := json.Marshal(struct {
+				Command string `json:"command"`
+			}{Command: *command})
+			if err != nil {
+				fmt.Println("error marshaling command payload:", err)
+				os.Exit(1)
+			}
+			*payload = string(payloadBytes)
+			if *jobType == "generic" {
+				*jobType = "shell"
+			}
+		}
 
 		resp, err := client.SubmitJob(context.Background(), &pb.SubmitJobRequest{
 			MaxRetries: int32(*retries),

@@ -1,28 +1,43 @@
 # Orqestra
 
-A distributed job orchestrator built in Go. The server coordinates job assignment across distributed worker processes via bidirectional gRPC streaming, with Redis-backed queuing and Postgres persistence.
+Orqestra is a distributed job orchestrator written in Go for reliable background job execution. It uses bidirectional gRPC to coordinate distributed workers, Postgres as the source of truth, and Redis for queueing and delayed retries.
 
-## Features
+## Quick Start
 
-- gRPC API for job submission, inspection, listing, and cancellation
-- CLI client (`cmd/cli`) for submitting, inspecting, listing, and cancelling jobs
-- Distributed workers (`cmd/worker`) — separate processes communicating with the server via bidirectional gRPC streams
-- Real command execution — workers run shell commands via `exec.Command`
-- Sequential workflow engine — chain multiple commands into named workflows
-- Exponential backoff retry with configurable max retries
-- Delayed job scheduling via Redis sorted sets
-- Crash recovery — jobs interrupted by worker or server failures are automatically re-queued on restart
-- Job cancellation — cancel pending or running jobs via CLI
-- Redis-backed queue with reliable delivery (`BRPOPLPUSH` pattern)
-- Transactional outbox pattern — job submissions are crash-safe; a background relay ensures jobs are eventually delivered to Redis
-- Postgres-backed job persistence
-- Docker Compose setup — one command to run the full stack
-- Structured logging (`log/slog`)
-- Graceful shutdown
+The fastest way to run the full stack is with Docker Compose.
+
+```bash
+# Copy env config
+cp .env.example .env
+
+# Start Postgres, Redis, server, and worker
+task docker:up
+
+# Submit a job
+task submit -- "echo hello world"
+
+# Inspect jobs
+task list
+task status -- <job-id>
+```
+
+The gRPC server is exposed on `localhost:50051`, so the CLI works from your host machine while the stack runs in Docker.
+
+## Highlights
+
+- gRPC API for job submission, inspection, listing, cancellation, and workflow triggers
+- CLI client for local development and operator workflows
+- Distributed workers connected to the server over bidirectional gRPC streams
+- Workers execute shell commands using Go's `os/exec` package
+- Sequential YAML workflows for multi-step jobs
+- Exponential backoff retries with configurable retry limits
+- Transactional outbox pattern for crash-safe job dispatch
+- Crash recovery for jobs interrupted by server or worker failures
+- Durable job persistence backed by Postgres
 
 ## Architecture
 
-```
+```text
 cmd/cli  ──gRPC──►  cmd/server  ◄──gRPC stream──  cmd/worker
                         ├── internal/server     (gRPC handlers + workflow engine)
                         ├── internal/workflow   (workflow registry)
@@ -31,27 +46,66 @@ cmd/cli  ──gRPC──►  cmd/server  ◄──gRPC stream──  cmd/worker
                         └── internal/db         (Postgres)
 ```
 
-The server and workers are separate processes. Workers connect to the server over a persistent
-bidirectional stream, receive job assignments, execute them, and report results back.
-
 ## Reliability
 
-Postgres is the source of truth. Jobs are written to Postgres and an outbox table atomically, then asynchronously relayed to Redis by a background goroutine. This prevents jobs from being lost if the server crashes between the database write and the queue enqueue.
+Jobs are written to Postgres and an outbox table atomically, then asynchronously relayed to Redis. That keeps Postgres as the source of truth and prevents jobs from being lost if the server crashes between persistence and enqueue.
 
-## Requirements
+Failed jobs are retried with exponential backoff, while interrupted jobs are automatically recovered when the server restarts.
 
-- Go 1.26+
-- PostgreSQL
-- Redis
-- [Task](https://taskfile.dev/)
-- [`golang-migrate`](https://github.com/golang-migrate/migrate)
-- `protoc` + Go plugins (only needed to regenerate proto)
+## Common Commands
 
-## Setup
+```bash
+# Start the core processes locally
+task server
+task worker
 
-The recommended way to run the full stack is via Docker (see [Docker](#docker) below).
+# Submit jobs
+task submit -- "echo hello world"
+task submit RETRIES=5 -- "go test ./..."
 
-For local development without Docker:
+# Inspect and control jobs
+task list
+task list STATUS=running
+task status -- <job-id>
+task cancel -- <job-id>
+
+# Workflow commands
+task workflow:list
+task trigger -- docker_demo
+task workflow:status -- <run-id>
+
+# Reset local queue + database state
+task cleanup
+```
+
+If you need to submit a raw JSON payload directly, use the advanced command:
+
+```bash
+task cli:submit PAYLOAD='{"command":"echo hello world"}'
+```
+
+## Docker
+
+Docker is the recommended local setup because it starts Postgres, Redis, the server, and the worker together.
+
+```bash
+task docker:logs
+task docker:ps
+task docker:down
+```
+
+Assuming the stack is already running via `task docker:up`, these commands help you inspect and manage it.
+
+To inspect the backing services directly:
+
+```bash
+docker compose exec postgres psql -U postgres orchestrator
+docker compose exec redis redis-cli
+```
+
+## Local Development
+
+If you want to run without Docker:
 
 ```bash
 # Create database
@@ -64,168 +118,34 @@ cp .env.example .env
 task migrate:up
 ```
 
-## Configuration
-
-| Variable          | Default              | Description                        |
-|-------------------|----------------------|------------------------------------|
-| `DB_URL`          | —                    | Postgres connection string         |
-| `WORKER_COUNT`    | —                    | Number of concurrent workers       |
-| `REDIS_ADDR`      | `localhost:6379`     | Redis address                      |
-| `REDIS_PASSWORD`  | —                    | Redis password (leave blank if none) |
-| `REDIS_DB`        | `0`                  | Redis DB index                     |
-| `REDIS_QUEUE_NAME`| `jobs`               | Redis key prefix for queues        |
-| `GRPC_ADDR`       | `:50051`             | gRPC server listen address         |
-
-## Docker
-
-The easiest way to run the full stack. No local Postgres or Redis needed.
+Then start the server and worker in separate terminals:
 
 ```bash
-# Build images and start everything (postgres, redis, server, worker)
-task docker:up
-
-# Follow logs
-task docker:logs
-
-# Stop and remove containers
-task docker:down
-```
-
-The server's gRPC port is exposed on `localhost:50051`, so you can still use the CLI from your host machine:
-
-```bash
-task trigger -- docker_demo
-task list
-```
-
-Postgres and Redis are only accessible within the Docker network. To inspect them directly:
-
-```bash
-docker compose exec postgres psql -U postgres orchestrator
-docker compose exec redis redis-cli
-```
-
-## Migrations
-
-Create a new migration:
-
-```bash
-task migrate:create NAME=<name>
-```
-
-Apply all pending migrations:
-
-```bash
-task migrate:up
-```
-
-Roll back the most recent migration:
-
-```bash
-task migrate:down
-```
-
-Check the current migration version:
-
-```bash
-task migrate:version
-```
-
-## Running
-
-The server and workers are separate processes. Workers execute shell commands on the machine they run on. Start them in separate terminals:
-
-```bash
-# Terminal 1 — start the gRPC server
+# Terminal 1
 task server
 
-# Terminal 2 — start the workers (connects to server via gRPC stream)
+# Terminal 2
 task worker
 ```
 
-`WORKER_COUNT` in `.env` controls how many concurrent worker goroutines the worker process spawns.
+`WORKER_COUNT` in `.env` controls how many worker goroutines the worker process spawns.
 
 For hot reload during development:
 
 ```bash
-task dev:server   # auto-restarts server on file change
-task dev:worker   # auto-restarts worker on file change
-```
-
-
-## Testing
-
-The test suite covers three tiers. Integration and E2E tests require a local Postgres and Redis instance.
-
-```bash
-# Run the full suite (sequential — integration tests share a DB)
-task test
-
-# Unit tests only — no Postgres or Redis required
-task test:unit
-
-# DB integration tests only
-task test:integration
-
-# End-to-end tests only
-task test:e2e
-```
-
-| Layer | Location | What's tested |
-|---|---|---|
-| **Unit** | `internal/workflow`, `internal/server` | YAML parsing, registry, exponential backoff |
-| **DB integration** | `internal/db` | Job CRUD, outbox lifecycle, crash recovery (`ResetRunningJobs`), workflow step dispatch |
-| **Relay** | `internal/outbox` | Happy path, Redis failure (entry stays unprocessed), skip already-processed |
-| **E2E** | `e2e/` | Job lifecycle (submit → relay → worker → completed), workflow abort on step failure, retry exhaustion |
-
-> Unit tests always run offline. Integration and E2E tests require local Postgres and Redis and are skipped automatically if the dependencies are unavailable.
-
-## CLI Usage
-
-```bash
-# Submit a shell command job
-task cli:submit PAYLOAD='{"command":"echo hello world"}'
-
-# Submit with retries
-task cli:submit PAYLOAD='{"command":"go test ./..."}' RETRIES=3
-
-# Check job status
-task status -- <job-id>
-
-# List all jobs
-task list
-
-# List jobs filtered by status
-task list STATUS=pending
-task list STATUS=running
-task list STATUS=completed
-task list STATUS=failed
-
-# Cancel a job
-task cancel -- <job-id>
+task dev:server
+task dev:worker
 ```
 
 ## Workflows
 
-Workflows are named sequences of shell commands executed in order. If any step fails, the workflow stops and is marked `failed`.
+Workflows are named sequences of shell commands executed in order. If any step fails, the workflow stops and the run is marked `failed`.
 
-Drop `.yaml` files into the `workflows/` directory and restart the server — they are loaded automatically.
+Workflow steps execute sequentially. If a step fails after exhausting its retries, the remaining steps are not scheduled.
 
-```bash
-# List loaded workflows
-task workflow:list
+Drop `.yaml` files into the `workflows/` directory and restart the server. When using Docker, the directory is volume-mounted, so `docker compose restart server` is enough after changes.
 
-# Trigger a workflow by name
-task trigger -- <name>
-
-# Check run status
-task workflow:status -- <run-id>
-
-# Wipe DB + Redis if the system gets stuck (e.g. after running tests against a live DB)
-task cleanup
-```
-
-**Workflow file format:**
+Workflow format:
 
 ```yaml
 name: ci
@@ -242,23 +162,59 @@ Example workflows included in `workflows/`:
 | `docker_demo.yaml` | Queries the local Docker daemon (`ps`, `images`, `system df`) |
 | `data_pipeline.yaml` | Hits the GitHub REST API, downloads JSON, and parses a field |
 
-Example use cases: CI pipelines, database backups, Docker deployments, scheduled maintenance tasks, sequential data processing.
+## Testing
 
-**Using Docker?** The `workflows/` directory is volume-mounted into the server container. Add a workflow file and run `docker compose restart server` — no rebuild needed.
+The test suite has three tiers. Integration and end-to-end tests require local Postgres and Redis.
 
+```bash
+task test
+task test:unit
+task test:integration
+task test:e2e
+```
 
-The CLI reads `GRPC_ADDR` too. If it is set to a listen-style value like `:50051`,
-the CLI treats it as `localhost:50051`.
+| Layer | Location | What it covers |
+|---|---|---|
+| Unit | `internal/workflow`, `internal/server` | YAML parsing, workflow registry, exponential backoff |
+| DB integration | `internal/db` | Job CRUD, outbox lifecycle, crash recovery, workflow step dispatch |
+| Relay | `internal/outbox` | Relay happy path, Redis failure handling, processed entry skipping |
+| E2E | `e2e/` | Full job lifecycle, workflow abort on step failure, retry exhaustion |
+
+Unit tests always run offline. Integration and E2E tests are skipped automatically when dependencies are unavailable.
+
+## Migrations
+
+```bash
+task migrate:create NAME=<name>
+task migrate:up
+task migrate:down
+task migrate:version
+```
+
+## Configuration
+
+| Variable | Default | Description |
+|---|---|---|
+| `DB_URL` | — | Postgres connection string |
+| `WORKER_COUNT` | — | Number of concurrent workers |
+| `REDIS_ADDR` | `localhost:6379` | Redis address |
+| `REDIS_PASSWORD` | — | Redis password |
+| `REDIS_DB` | `0` | Redis DB index |
+| `REDIS_QUEUE_NAME` | `jobs` | Redis key prefix for queues |
+| `GRPC_ADDR` | `:50051` | gRPC server listen address |
+
+The CLI also reads `GRPC_ADDR`. If it is set to a listen-style value like `:50051`, the CLI treats it as `localhost:50051`.
 
 ## Regenerating Proto
 
-If you modify `proto/orchestrator.proto`, regenerate Go code with:
+If you update `proto/orchestrator.proto`, regenerate the Go bindings with:
 
 ```bash
 task proto
 ```
 
-Requires `protoc-gen-go` and `protoc-gen-go-grpc` in your `$PATH`:
+You will need `protoc-gen-go` and `protoc-gen-go-grpc` in your `PATH`:
+
 ```bash
 go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
