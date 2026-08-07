@@ -107,10 +107,9 @@ tasks:
   submit:
     desc: 'Submit a shell command (e.g. task submit -- "sleep 30")'
     vars:
-      COMMAND: '{{.CLI_ARGS}}'
       RETRIES: '{{default "3" .RETRIES}}'
     env:
-      COMMAND: '{{.COMMAND}}'
+      COMMAND: '{{.CLI_ARGS}}'
     cmds:
       - go run ./cmd/cli submit --type=shell --command "$COMMAND" --retries={{.RETRIES}}
 

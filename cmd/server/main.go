@@ -24,6 +24,7 @@ import (
 
 func main() {
 	log := logger.NewLogger()
+	slog.SetDefault(log)
 
 	cfg := config.LoadConfig()
 

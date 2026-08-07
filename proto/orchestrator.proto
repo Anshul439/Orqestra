@@ -46,6 +46,10 @@ message CancelJobResponse {
 
 message ReadySignal {}
 
+message HeartbeatSignal {
+  int32 job_id = 1;
+}
+
 message TaskResult {
   int32  job_id  = 1;
   bool   success = 2;
@@ -55,8 +59,9 @@ message TaskResult {
 message WorkerMessage {
   string worker_id = 1;
   oneof payload {
-    ReadySignal ready  = 2;
-    TaskResult  result = 3;
+  ReadySignal     ready     = 2;
+  TaskResult      result    = 3;
+  HeartbeatSignal heartbeat = 4;
   }
 }
 

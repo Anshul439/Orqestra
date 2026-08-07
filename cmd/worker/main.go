@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/Anshul439/Orqestra/internal/config"
 	"github.com/Anshul439/Orqestra/internal/logger"
@@ -53,10 +54,17 @@ func runWorker(ctx context.Context, client pb.OrchestratorServiceClient, id int,
 		return
 	}
 
-	workerID := fmt.Sprintf("worker-%d", id)
+	workerID := fmt.Sprintf("worker-%d-%d-%d", id, os.Getpid(), time.Now().UnixNano())
+	var sendMu sync.Mutex
+
+	sendMessage := func(msg *pb.WorkerMessage) error {
+		sendMu.Lock()
+		defer sendMu.Unlock()
+		return stream.Send(msg)
+	}
 
 	for {
-		if err := stream.Send(&pb.WorkerMessage{
+		if err := sendMessage(&pb.WorkerMessage{
 			WorkerId: workerID,
 			Payload:  &pb.WorkerMessage_Ready{Ready: &pb.ReadySignal{}},
 		}); err != nil {
@@ -80,9 +88,46 @@ func runWorker(ctx context.Context, client pb.OrchestratorServiceClient, id int,
 			slog.String("type", task.Type),
 		)
 
+		// Heartbeat goroutine: pings the server every 5s while the job runs.
+		hbCtx, stopHeartbeat := context.WithCancel(ctx)
+		hbDone := make(chan struct{})
+		go func(jobID int32) {
+			defer close(hbDone)
+			ticker := time.NewTicker(5 * time.Second)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ticker.C:
+					log.Info("sending heartbeat",
+						slog.String("worker_id", workerID),
+						slog.Int("job_id", int(jobID)),
+					)
+					if err := sendMessage(&pb.WorkerMessage{
+						WorkerId: workerID,
+						Payload: &pb.WorkerMessage_Heartbeat{
+							Heartbeat: &pb.HeartbeatSignal{JobId: jobID},
+						},
+					}); err != nil {
+						log.Warn("failed to send heartbeat",
+							slog.String("worker_id", workerID),
+							slog.Int("job_id", int(jobID)),
+							slog.String("error", err.Error()),
+						)
+						return
+					}
+				case <-hbCtx.Done():
+					return
+				}
+			}
+		}(task.JobId)
+
 		success, errMsg := executeJob(ctx, task.Payload, log)
 
-		if err := stream.Send(&pb.WorkerMessage{
+		// Stop heartbeats before sending the result.
+		stopHeartbeat()
+		<-hbDone
+
+		if err := sendMessage(&pb.WorkerMessage{
 			WorkerId: workerID,
 			Payload: &pb.WorkerMessage_Result{
 				Result: &pb.TaskResult{

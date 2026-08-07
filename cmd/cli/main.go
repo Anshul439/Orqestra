@@ -69,9 +69,12 @@ func main() {
 		submitFlags.Parse(os.Args[2:])
 
 		if *command != "" {
+			// Task runner wraps CLI_ARGS in single quotes for shell safety.
+			// Strip them so the actual command is clean.
+			cmd := strings.Trim(*command, "'")
 			payloadBytes, err := json.Marshal(struct {
 				Command string `json:"command"`
-			}{Command: *command})
+			}{Command: cmd})
 			if err != nil {
 				fmt.Println("error marshaling command payload:", err)
 				os.Exit(1)

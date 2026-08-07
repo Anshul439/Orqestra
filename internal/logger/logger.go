@@ -11,7 +11,7 @@ import (
 func NewLogger() *slog.Logger {
 
 	handler := tint.NewHandler(os.Stdout, &tint.Options{
-		Level:      slog.LevelInfo,
+		Level:      slog.LevelDebug,
 		TimeFormat: time.Kitchen, // short time format like 3:04PM
 	})
 
