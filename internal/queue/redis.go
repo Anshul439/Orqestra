@@ -161,6 +161,11 @@ func (q *RedisQueue) Consume(
 				jobID,
 			).Result()
 
+			if errors.Is(getErr, gredis.Nil) {
+				// Payload missing: stale or already-cleaned entry. Remove and retry.
+				q.client.LRem(ctx, q.processingKey, 1, jobID) //nolint:errcheck
+				continue
+			}
 			if getErr != nil {
 				return Job{}, getErr
 			}

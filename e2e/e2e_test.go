@@ -16,6 +16,7 @@ import (
 	"github.com/Anshul439/Orqestra/internal/outbox"
 	"github.com/Anshul439/Orqestra/internal/queue"
 	"github.com/Anshul439/Orqestra/internal/server"
+	"github.com/Anshul439/Orqestra/internal/service"
 	"github.com/Anshul439/Orqestra/internal/testutil"
 	"github.com/Anshul439/Orqestra/internal/workflow"
 	pb "github.com/Anshul439/Orqestra/proto"
@@ -57,14 +58,15 @@ func newTestEnv(t *testing.T, registry *workflow.Registry, queueName string) *te
 
 	q := queue.NewRedisQueue(rdb, queueName, time.Second)
 
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	t.Cleanup(cancel)
+
 	lis := bufconn.Listen(1 << 20)
 	grpcSrv := grpc.NewServer()
-	pb.RegisterOrchestratorServiceServer(grpcSrv, server.New(pool, q, registry))
+	pb.RegisterOrchestratorServiceServer(grpcSrv, server.New(ctx, pool, q, service.NewJobService(pool, q), service.NewWorkflowService(pool, registry)))
 	go grpcSrv.Serve(lis) //nolint:errcheck
 	t.Cleanup(grpcSrv.Stop)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	t.Cleanup(cancel)
 	q.Start(ctx)
 	go outbox.Start(ctx, pool, q)
 

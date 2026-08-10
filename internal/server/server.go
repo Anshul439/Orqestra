@@ -27,9 +27,9 @@ type Server struct {
 	owner    sync.Map
 }
 
-func New(pool *pgxpool.Pool, q queue.Queue, jobs *service.JobService, workflows *service.WorkflowService) *Server {
+func New(ctx context.Context, pool *pgxpool.Pool, q queue.Queue, jobs *service.JobService, workflows *service.WorkflowService) *Server {
 	s := &Server{db: pool, queue: q, jobs: jobs, workflows: workflows}
-	go s.runReaper()
+	go s.runReaper(ctx)
 	return s
 }
 
@@ -280,13 +280,18 @@ func (s *Server) recordHeartbeat(jobID int, workerID string) bool {
 	return true
 }
 
-func (s *Server) runReaper() {
+func (s *Server) runReaper(ctx context.Context) {
 	const reaperInterval = 10 * time.Second
 	ticker := time.NewTicker(reaperInterval)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		s.reaperTick(time.Now())
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			s.reaperTick(time.Now())
+		}
 	}
 }
 

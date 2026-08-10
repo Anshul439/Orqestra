@@ -87,7 +87,7 @@ func main() {
 	}
 
 	grpcSrv := grpc.NewServer()
-	pb.RegisterOrchestratorServiceServer(grpcSrv, server.New(poolConn, q, jobSvc, workflowSvc))
+	pb.RegisterOrchestratorServiceServer(grpcSrv, server.New(ctx, poolConn, q, jobSvc, workflowSvc))
 
 	go func() {
 		log.Info("gRPC server listening", slog.String("addr", cfg.GRPCAddr))

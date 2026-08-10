@@ -7,8 +7,8 @@ import (
 
 	"github.com/Anshul439/Orqestra/internal/db"
 	"github.com/Anshul439/Orqestra/internal/queue"
+	"github.com/Anshul439/Orqestra/internal/service"
 	"github.com/Anshul439/Orqestra/internal/testutil"
-	"github.com/Anshul439/Orqestra/internal/workflow"
 	pb "github.com/Anshul439/Orqestra/proto"
 )
 
@@ -110,7 +110,7 @@ func TestHandleResultIgnoresNonOwnerWorker(t *testing.T) {
 	}
 
 	q := &fakeQueue{}
-	s := &Server{db: pool, queue: q, registry: workflow.NewRegistry()}
+	s := &Server{db: pool, queue: q}
 	s.owner.Store(jobID, "worker-owner")
 	s.lastSeen.Store(jobID, time.Now())
 
@@ -145,7 +145,7 @@ func TestCancelJobClearsOwnership(t *testing.T) {
 	}
 
 	q := &fakeQueue{}
-	s := &Server{db: pool, queue: q, registry: workflow.NewRegistry()}
+	s := &Server{db: pool, queue: q, jobs: service.NewJobService(pool, q)}
 	s.owner.Store(jobID, "worker-owner")
 	s.lastSeen.Store(jobID, time.Now())
 
@@ -189,7 +189,7 @@ func TestReaperReclaimsAndShieldRejectsStaleResult(t *testing.T) {
 	}
 
 	q := &fakeQueue{}
-	s := &Server{db: pool, queue: q, registry: workflow.NewRegistry()}
+	s := &Server{db: pool, queue: q}
 
 	// Worker A owns the job but its heartbeat is stale.
 	s.owner.Store(jobID, "worker-a")
