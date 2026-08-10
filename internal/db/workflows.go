@@ -6,13 +6,12 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// WorkflowRunRow is the DB representation of a workflow run.
 type WorkflowRunRow struct {
-	ID           int
-	WorkflowName string
-	Status       string
-	CurrentStep  int
-	TotalSteps   int
+	ID           int    `json:"id"`
+	WorkflowName string `json:"workflow_name"`
+	Status       string `json:"status"`
+	CurrentStep  int    `json:"current_step"`
+	TotalSteps   int    `json:"total_steps"`
 }
 
 func CreateWorkflowRun(conn *pgxpool.Pool, name string, totalSteps int) (int, error) {

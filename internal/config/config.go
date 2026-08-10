@@ -17,6 +17,7 @@ type Config struct {
 	RedisDB        int
 	RedisQueueName string
 	GRPCAddr       string
+	HTTPAddr       string
 }
 
 func LoadConfig() *Config {
@@ -55,6 +56,7 @@ func LoadConfig() *Config {
 		RedisDB:        redisDB,
 		RedisQueueName: getEnv("REDIS_QUEUE_NAME", "jobs"),
 		GRPCAddr:       getEnv("GRPC_ADDR", ":50051"),
+		HTTPAddr:       getEnv("HTTP_ADDR", ":8080"),
 	}
 }
 

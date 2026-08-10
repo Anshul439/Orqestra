@@ -9,9 +9,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// NewPool connects to the test database.
-// The URL is read from TEST_DB_URL; it falls back to a localhost default.
-// The test is skipped if the DB is unreachable.
 func NewPool(t *testing.T) *pgxpool.Pool {
 	t.Helper()
 	dbURL := os.Getenv("TEST_DB_URL")

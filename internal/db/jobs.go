@@ -55,17 +55,15 @@ func ResetRunningJobs(conn *pgxpool.Pool) error {
 	return err
 }
 
-// JobRow is the DB representation of a job.
-// Distinct from queue.Job, which is the lightweight in-memory struct used by the queue and workers.
 type JobRow struct {
-	ID            int
-	Status        string
-	RetryCount    int
-	MaxRetries    int
-	Type          string
-	Payload       string
-	WorkflowRunID *int // nil for regular jobs
-	StepIndex     *int // nil for regular jobs
+	ID            int    `json:"id"`
+	Status        string `json:"status"`
+	RetryCount    int    `json:"retry_count"`
+	MaxRetries    int    `json:"max_retries"`
+	Type          string `json:"type"`
+	Payload       string `json:"payload"`
+	WorkflowRunID *int   `json:"-"`
+	StepIndex     *int   `json:"-"`
 }
 
 func GetJob(conn *pgxpool.Pool, jobID int) (JobRow, error) {

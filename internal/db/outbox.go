@@ -9,8 +9,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// DBTX is satisfied by both *pgxpool.Pool and pgx.Tx, allowing functions to
-// run either on a plain connection or inside an existing transaction.
 type DBTX interface {
 	Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error)
 }

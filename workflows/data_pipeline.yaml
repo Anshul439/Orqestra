@@ -1,3 +1,4 @@
+# Fetches and parses GitHub profile data.
 name: data_pipeline
 steps:
   - command: echo "Fetching GitHub profile for Anshul439..."
