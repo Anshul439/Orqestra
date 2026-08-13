@@ -117,6 +117,9 @@ func main() {
 		}
 		fmt.Printf("job %d (%s): status=%s retries=%d/%d\n",
 			resp.JobId, resp.Type, resp.Status, resp.RetryCount, resp.MaxRetries)
+		if resp.Output != "" {
+			fmt.Printf("output:\n%s\n", resp.Output)
+		}
 
 	case "list":
 		listCmd := flag.NewFlagSet("list", flag.ExitOnError)

@@ -53,6 +53,7 @@ func (s *Server) GetJob(ctx context.Context, req *pb.GetJobRequest) (*pb.GetJobR
 		MaxRetries: int32(job.MaxRetries),
 		Type:       job.Type,
 		Payload:    job.Payload,
+		Output:     job.Output,
 	}, nil
 }
 
@@ -70,6 +71,7 @@ func (s *Server) ListJobs(ctx context.Context, req *pb.ListJobsRequest) (*pb.Lis
 			MaxRetries: int32(j.MaxRetries),
 			Type:       j.Type,
 			Payload:    j.Payload,
+			Output:     j.Output,
 		})
 	}
 	return &pb.ListJobsResponse{Jobs: resp}, nil
@@ -215,8 +217,8 @@ func (s *Server) handleResult(ctx context.Context, result *pb.TaskResult, sender
 
 	if result.Success {
 		s.queue.Ack(ctx, queue.Job{ID: jobID})
-		if err := db.UpdateJobState(s.db, jobID, "completed", row.RetryCount); err != nil {
-			log.Error("handleResult: failed to mark job completed", slog.Int("job_id", jobID), slog.String("error", err.Error()))
+		if err := db.CompleteJob(s.db, jobID, result.Output); err != nil {
+			log.Error("handleResult: failed to complete job", slog.Int("job_id", jobID), slog.String("error", err.Error()))
 		}
 		s.clearOwnership(jobID)
 

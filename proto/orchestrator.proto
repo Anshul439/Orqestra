@@ -25,6 +25,7 @@ message GetJobResponse {
   int32  max_retries = 4;
   string type        = 5;
   string payload     = 6;
+  string output      = 7;
 }
 
 message ListJobsRequest {
@@ -54,6 +55,7 @@ message TaskResult {
   int32  job_id  = 1;
   bool   success = 2;
   string error   = 3; // populated if success=false
+  string output  = 4; // empty when success=false
 }
 
 message WorkerMessage {

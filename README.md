@@ -28,7 +28,8 @@ The gRPC server is exposed on `localhost:50051`, so the CLI works from your host
 - gRPC API for job submission, inspection, listing, cancellation, and workflow triggers
 - CLI client for local development and operator workflows
 - Distributed workers connected to the server over bidirectional gRPC streams
-- Workers execute shell commands using Go's `os/exec` package
+- Workers execute shell commands using Go's `os/exec` package, capturing stdout and stderr separately
+- Completed job stdout is persisted and accessible via the CLI and API
 - Sequential YAML workflows for multi-step jobs
 - Exponential backoff retries with configurable retry limits
 - Transactional outbox pattern for crash-safe job dispatch

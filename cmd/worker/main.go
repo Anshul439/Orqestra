@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -121,7 +122,7 @@ func runWorker(ctx context.Context, client pb.OrchestratorServiceClient, id int,
 			}
 		}(task.JobId)
 
-		success, errMsg := executeJob(ctx, task.Payload, log)
+		success, errMsg, output := executeJob(ctx, task.Payload, log)
 
 		// Stop heartbeats before sending the result.
 		stopHeartbeat()
@@ -134,6 +135,7 @@ func runWorker(ctx context.Context, client pb.OrchestratorServiceClient, id int,
 					JobId:   task.JobId,
 					Success: success,
 					Error:   errMsg,
+					Output:  output,
 				},
 			},
 		}); err != nil {
@@ -142,32 +144,44 @@ func runWorker(ctx context.Context, client pb.OrchestratorServiceClient, id int,
 	}
 }
 
-func executeJob(ctx context.Context, payload string, log *slog.Logger) (bool, string) {
+// Returns (success, errMsg, stdout). stdout is only meaningful when success=true.
+func executeJob(ctx context.Context, payload string, log *slog.Logger) (bool, string, string) {
 	var p struct {
 		Command string `json:"command"`
 	}
 	if err := json.Unmarshal([]byte(payload), &p); err != nil {
-		return false, fmt.Sprintf("invalid payload: %v", err)
+		return false, fmt.Sprintf("invalid payload: %v", err), ""
 	}
 	if p.Command == "" {
-		return false, "missing required field: command"
+		return false, "missing required field: command", ""
 	}
 
 	log.Info("executing command", slog.String("command", p.Command))
 
+	var stdout, stderr bytes.Buffer
 	cmd := exec.CommandContext(ctx, "sh", "-c", p.Command)
-	out, err := cmd.CombinedOutput()
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
 
-	output := strings.TrimSpace(string(out))
-	if output != "" {
-		for _, line := range strings.Split(output, "\n") {
+	runErr := cmd.Run()
+
+	stdoutStr := strings.TrimSpace(stdout.String())
+	stderrStr := strings.TrimSpace(stderr.String())
+
+	if stdoutStr != "" {
+		for _, line := range strings.Split(stdoutStr, "\n") {
 			log.Info(line)
 		}
 	}
-
-	if err != nil {
-		return false, fmt.Sprintf("command failed: %v\n%s", err, output)
+	if stderrStr != "" {
+		for _, line := range strings.Split(stderrStr, "\n") {
+			log.Warn(line)
+		}
 	}
 
-	return true, ""
+	if runErr != nil {
+		return false, fmt.Sprintf("command failed: %v\n%s", runErr, stderrStr), ""
+	}
+
+	return true, "", stdoutStr
 }

@@ -177,6 +177,7 @@ type GetJobResponse struct {
 	MaxRetries    int32                  `protobuf:"varint,4,opt,name=max_retries,json=maxRetries,proto3" json:"max_retries,omitempty"`
 	Type          string                 `protobuf:"bytes,5,opt,name=type,proto3" json:"type,omitempty"`
 	Payload       string                 `protobuf:"bytes,6,opt,name=payload,proto3" json:"payload,omitempty"`
+	Output        string                 `protobuf:"bytes,7,opt,name=output,proto3" json:"output,omitempty"` // stdout from the completed job
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -249,6 +250,13 @@ func (x *GetJobResponse) GetType() string {
 func (x *GetJobResponse) GetPayload() string {
 	if x != nil {
 		return x.Payload
+	}
+	return ""
+}
+
+func (x *GetJobResponse) GetOutput() string {
+	if x != nil {
+		return x.Output
 	}
 	return ""
 }
@@ -521,7 +529,8 @@ type TaskResult struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	JobId         int32                  `protobuf:"varint,1,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
 	Success       bool                   `protobuf:"varint,2,opt,name=success,proto3" json:"success,omitempty"`
-	Error         string                 `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"` // populated if success=false
+	Error         string                 `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`   // populated if success=false
+	Output        string                 `protobuf:"bytes,4,opt,name=output,proto3" json:"output,omitempty"` // stdout captured from the command (success=true only)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -573,6 +582,13 @@ func (x *TaskResult) GetSuccess() bool {
 func (x *TaskResult) GetError() string {
 	if x != nil {
 		return x.Error
+	}
+	return ""
+}
+
+func (x *TaskResult) GetOutput() string {
+	if x != nil {
+		return x.Output
 	}
 	return ""
 }
@@ -1178,7 +1194,7 @@ const file_proto_orchestrator_proto_rawDesc = "" +
 	"\x11SubmitJobResponse\x12\x15\n" +
 	"\x06job_id\x18\x01 \x01(\x05R\x05jobId\"&\n" +
 	"\rGetJobRequest\x12\x15\n" +
-	"\x06job_id\x18\x01 \x01(\x05R\x05jobId\"\xaf\x01\n" +
+	"\x06job_id\x18\x01 \x01(\x05R\x05jobId\"\xc7\x01\n" +
 	"\x0eGetJobResponse\x12\x15\n" +
 	"\x06job_id\x18\x01 \x01(\x05R\x05jobId\x12\x16\n" +
 	"\x06status\x18\x02 \x01(\tR\x06status\x12\x1f\n" +
@@ -1187,7 +1203,8 @@ const file_proto_orchestrator_proto_rawDesc = "" +
 	"\vmax_retries\x18\x04 \x01(\x05R\n" +
 	"maxRetries\x12\x12\n" +
 	"\x04type\x18\x05 \x01(\tR\x04type\x12\x18\n" +
-	"\apayload\x18\x06 \x01(\tR\apayload\")\n" +
+	"\apayload\x18\x06 \x01(\tR\apayload\x12\x16\n" +
+	"\x06output\x18\a \x01(\tR\x06output\")\n" +
 	"\x0fListJobsRequest\x12\x16\n" +
 	"\x06status\x18\x01 \x01(\tR\x06status\"D\n" +
 	"\x10ListJobsResponse\x120\n" +
@@ -1199,12 +1216,13 @@ const file_proto_orchestrator_proto_rawDesc = "" +
 	"\x06status\x18\x02 \x01(\tR\x06status\"\r\n" +
 	"\vReadySignal\"(\n" +
 	"\x0fHeartbeatSignal\x12\x15\n" +
-	"\x06job_id\x18\x01 \x01(\x05R\x05jobId\"S\n" +
+	"\x06job_id\x18\x01 \x01(\x05R\x05jobId\"k\n" +
 	"\n" +
 	"TaskResult\x12\x15\n" +
 	"\x06job_id\x18\x01 \x01(\x05R\x05jobId\x12\x18\n" +
 	"\asuccess\x18\x02 \x01(\bR\asuccess\x12\x14\n" +
-	"\x05error\x18\x03 \x01(\tR\x05error\"\xdd\x01\n" +
+	"\x05error\x18\x03 \x01(\tR\x05error\x12\x16\n" +
+	"\x06output\x18\x04 \x01(\tR\x06output\"\xdd\x01\n" +
 	"\rWorkerMessage\x12\x1b\n" +
 	"\tworker_id\x18\x01 \x01(\tR\bworkerId\x121\n" +
 	"\x05ready\x18\x02 \x01(\v2\x19.orchestrator.ReadySignalH\x00R\x05ready\x122\n" +
