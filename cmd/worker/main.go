@@ -146,8 +146,11 @@ func runWorker(ctx context.Context, client pb.OrchestratorServiceClient, id int,
 
 // Returns (success, errMsg, stdout). stdout is only meaningful when success=true.
 func executeJob(ctx context.Context, payload string, log *slog.Logger) (bool, string, string) {
+	const maxPreviousOutputBytes = 64 * 1024 // 64 KB — env vars aren't a data bus
+
 	var p struct {
-		Command string `json:"command"`
+		Command        string `json:"command"`
+		PreviousOutput string `json:"previous_output"`
 	}
 	if err := json.Unmarshal([]byte(payload), &p); err != nil {
 		return false, fmt.Sprintf("invalid payload: %v", err), ""
@@ -162,6 +165,15 @@ func executeJob(ctx context.Context, payload string, log *slog.Logger) (bool, st
 	cmd := exec.CommandContext(ctx, "sh", "-c", p.Command)
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
+
+	if len(p.PreviousOutput) > maxPreviousOutputBytes {
+		log.Warn("previous_output truncated before injection into PREVIOUS_OUTPUT env var",
+			slog.Int("original_bytes", len(p.PreviousOutput)),
+			slog.Int("limit_bytes", maxPreviousOutputBytes),
+		)
+		p.PreviousOutput = p.PreviousOutput[:maxPreviousOutputBytes]
+	}
+	cmd.Env = append(os.Environ(), "PREVIOUS_OUTPUT="+p.PreviousOutput)
 
 	runErr := cmd.Run()
 

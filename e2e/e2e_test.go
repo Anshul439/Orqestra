@@ -2,6 +2,7 @@ package e2e_test
 
 import (
 	"context"
+	"encoding/json"
 	"net"
 	"os"
 	"sync/atomic"
@@ -219,4 +220,134 @@ func waitForWorkflowStatus(t *testing.T, ctx context.Context, client pb.Orchestr
 		time.Sleep(500 * time.Millisecond)
 	}
 	t.Fatalf("workflow run %d did not reach %q within deadline", runID, want)
+}
+
+// runWorkerWithOutput is like runWorker but also calls outputFn(n) to get the
+// Output field of each result, and sends each raw task payload to payloads
+// (non-blocking) so tests can inspect what the worker received.
+func runWorkerWithOutput(
+	ctx context.Context,
+	dialer func(context.Context, string) (net.Conn, error),
+	successFn func(n int) bool,
+	outputFn func(n int) string,
+	payloads chan<- string,
+) {
+	conn, err := grpc.NewClient("passthrough:///bufnet",
+		grpc.WithContextDialer(dialer),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		return
+	}
+	defer conn.Close()
+
+	stream, err := pb.NewOrchestratorServiceClient(conn).Work(ctx)
+	if err != nil {
+		return
+	}
+
+	var n atomic.Int32
+	for {
+		if err := stream.Send(&pb.WorkerMessage{
+			WorkerId: "e2e-chain-worker",
+			Payload:  &pb.WorkerMessage_Ready{Ready: &pb.ReadySignal{}},
+		}); err != nil {
+			return
+		}
+		msg, err := stream.Recv()
+		if err != nil {
+			return
+		}
+		task, ok := msg.Payload.(*pb.ServerMessage_Task)
+		if !ok {
+			continue
+		}
+		num := int(n.Add(1))
+
+		select {
+		case payloads <- task.Task.Payload:
+		default:
+		}
+
+		out := ""
+		if outputFn != nil {
+			out = outputFn(num)
+		}
+		stream.Send(&pb.WorkerMessage{ //nolint:errcheck
+			WorkerId: "e2e-chain-worker",
+			Payload: &pb.WorkerMessage_Result{
+				Result: &pb.TaskResult{
+					JobId:   task.Task.JobId,
+					Success: successFn(num),
+					Output:  out,
+				},
+			},
+		})
+	}
+}
+
+func TestWorkflowOutputChaining(t *testing.T) {
+	registry := workflow.NewRegistry()
+	registry.Register(workflow.Workflow{
+		Name: "chain-wf",
+		Steps: []workflow.Step{
+			{Command: "echo step0"},
+			{Command: "echo step1"},
+		},
+	})
+
+	env := newTestEnv(t, registry, "e2e_chain")
+
+	// Buffer of 2 so the worker never blocks on channel writes.
+	payloads := make(chan string, 2)
+	go runWorkerWithOutput(
+		env.ctx,
+		env.dialer,
+		func(_ int) bool { return true },
+		func(n int) string {
+			if n == 1 {
+				return "chained-value"
+			}
+			return ""
+		},
+		payloads,
+	)
+
+	resp, err := env.client.TriggerWorkflow(env.ctx, &pb.TriggerWorkflowRequest{Name: "chain-wf"})
+	if err != nil {
+		t.Fatalf("TriggerWorkflow: %v", err)
+	}
+
+	waitForWorkflowStatus(t, env.ctx, env.client, resp.RunId, "completed")
+
+	// Both payloads are in the buffer by the time the workflow is completed.
+	collect := func() string {
+		t.Helper()
+		select {
+		case p := <-payloads:
+			return p
+		case <-time.After(3 * time.Second):
+			t.Fatal("timed out waiting for task payload")
+			return ""
+		}
+	}
+	step0Payload := collect()
+	step1Payload := collect()
+
+	var p0, p1 struct {
+		PreviousOutput string `json:"previous_output"`
+	}
+	if err := json.Unmarshal([]byte(step0Payload), &p0); err != nil {
+		t.Fatalf("unmarshal step 0 payload: %v", err)
+	}
+	if err := json.Unmarshal([]byte(step1Payload), &p1); err != nil {
+		t.Fatalf("unmarshal step 1 payload: %v", err)
+	}
+
+	if p0.PreviousOutput != "" {
+		t.Errorf("step 0 previous_output = %q, want empty", p0.PreviousOutput)
+	}
+	if p1.PreviousOutput != "chained-value" {
+		t.Errorf("step 1 previous_output = %q, want %q", p1.PreviousOutput, "chained-value")
+	}
 }

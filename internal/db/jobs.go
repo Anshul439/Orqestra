@@ -79,7 +79,7 @@ type JobRow struct {
 
 func GetJob(conn *pgxpool.Pool, jobID int) (JobRow, error) {
 	var row JobRow
-	query := `SELECT id, status, retry_count, max_retries, type, payload, output, workflow_run_id, step_index
+	query := `SELECT id, status, retry_count, max_retries, type, payload, COALESCE(output, ''), workflow_run_id, step_index
 	          FROM jobs WHERE id = $1`
 	err := conn.QueryRow(context.Background(), query, jobID).
 		Scan(&row.ID, &row.Status, &row.RetryCount, &row.MaxRetries, &row.Type, &row.Payload,
@@ -88,7 +88,7 @@ func GetJob(conn *pgxpool.Pool, jobID int) (JobRow, error) {
 }
 
 func ListJobs(db *pgxpool.Pool, status string) ([]JobRow, error) {
-	query := `SELECT id, status, retry_count, max_retries, type, payload, output, workflow_run_id, step_index FROM jobs`
+	query := `SELECT id, status, retry_count, max_retries, type, payload, COALESCE(output, ''), workflow_run_id, step_index FROM jobs`
 	args := []any{}
 
 	if status != "" {

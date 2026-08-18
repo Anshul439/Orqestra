@@ -30,7 +30,7 @@ The gRPC server is exposed on `localhost:50051`, so the CLI works from your host
 - Distributed workers connected to the server over bidirectional gRPC streams
 - Workers execute shell commands using Go's `os/exec` package, capturing stdout and stderr separately
 - Completed job stdout is persisted and accessible via the CLI and API
-- Sequential YAML workflows for multi-step jobs
+- Sequential YAML workflows with per-step output chaining via `$PREVIOUS_OUTPUT`
 - Exponential backoff retries with configurable retry limits
 - Transactional outbox pattern for crash-safe job dispatch
 - Crash recovery for jobs interrupted by server or worker failures
@@ -146,7 +146,21 @@ Workflow steps execute sequentially. If a step fails after exhausting its retrie
 
 Drop `.yaml` files into the `workflows/` directory and restart the server. When using Docker, the directory is volume-mounted, so `docker compose restart server` is enough after changes.
 
-Workflow format:
+### Output chaining
+
+Each step's stdout is available to the next step as the `$PREVIOUS_OUTPUT` environment variable. This lets you pipe data through a workflow without writing to intermediate files:
+
+```yaml
+name: greet
+steps:
+  - command: echo "hello"
+  - command: echo "previous step said: $PREVIOUS_OUTPUT"
+  - command: printf "got '%s', forwarding\n" "$PREVIOUS_OUTPUT"
+```
+
+The first step always receives an empty `$PREVIOUS_OUTPUT`. Output is capped at 64 KB before injection — `$PREVIOUS_OUTPUT` is not a data bus; use the filesystem for large payloads.
+
+### Format
 
 ```yaml
 name: ci
@@ -176,10 +190,9 @@ task test:e2e
 
 | Layer | Location | What it covers |
 |---|---|---|
-| Unit | `internal/workflow`, `internal/server` | YAML parsing, workflow registry, exponential backoff |
-| DB integration | `internal/db` | Job CRUD, outbox lifecycle, crash recovery, workflow step dispatch |
-| Relay | `internal/outbox` | Relay happy path, Redis failure handling, processed entry skipping |
-| E2E | `e2e/` | Full job lifecycle, workflow abort on step failure, retry exhaustion |
+| Unit | `internal/workflow`, `internal/server`, `cmd/worker` | YAML parsing, workflow registry, backoff, `executeJob` output chaining |
+| DB integration | `internal/db`, `internal/outbox`, `internal/service` | Job CRUD, outbox lifecycle, crash recovery, workflow chaining payloads |
+| E2E | `e2e/` | Full job lifecycle, workflow output chaining, abort on failure, retry exhaustion |
 
 Unit tests always run offline. Integration and E2E tests are skipped automatically when dependencies are unavailable.
 

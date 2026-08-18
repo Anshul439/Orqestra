@@ -223,7 +223,7 @@ func (s *Server) handleResult(ctx context.Context, result *pb.TaskResult, sender
 		s.clearOwnership(jobID)
 
 		if row.WorkflowRunID != nil {
-			s.workflows.Advance(ctx, *row.WorkflowRunID, *row.StepIndex)
+			s.workflows.Advance(ctx, *row.WorkflowRunID, *row.StepIndex, result.Output)
 		}
 		return
 	}

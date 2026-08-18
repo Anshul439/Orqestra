@@ -245,4 +245,3 @@ func TestReaperReclaimsAndShieldRejectsStaleResult(t *testing.T) {
 		t.Fatalf("zombie worker-a corrupted job status: got %q", row.Status)
 	}
 }
-

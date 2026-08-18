@@ -31,7 +31,7 @@ func (s *WorkflowService) TriggerWorkflow(ctx context.Context, name string) (int
 		return 0, err
 	}
 
-	if err := s.submitStep(ctx, runID, 0, wf); err != nil {
+	if err := s.submitStep(ctx, runID, 0, wf, ""); err != nil {
 		return 0, err
 	}
 
@@ -46,7 +46,7 @@ func (s *WorkflowService) GetWorkflowStatus(_ context.Context, runID int) (db.Wo
 	return db.GetWorkflowRun(s.db, runID)
 }
 
-func (s *WorkflowService) Advance(ctx context.Context, runID, completedStepIndex int) {
+func (s *WorkflowService) Advance(ctx context.Context, runID, completedStepIndex int, previousOutput string) {
 	log := slog.Default()
 
 	run, err := db.GetWorkflowRun(s.db, runID)
@@ -78,17 +78,18 @@ func (s *WorkflowService) Advance(ctx context.Context, runID, completedStepIndex
 		return
 	}
 
-	if err := s.submitStep(ctx, runID, nextStep, wf); err != nil {
+	if err := s.submitStep(ctx, runID, nextStep, wf, previousOutput); err != nil {
 		log.Error("advanceWorkflow: failed to submit next step", slog.Int("run_id", runID), slog.Int("step", nextStep), slog.String("error", err.Error()))
 	}
 }
 
-func (s *WorkflowService) submitStep(ctx context.Context, runID, stepIndex int, wf workflow.Workflow) error {
+func (s *WorkflowService) submitStep(ctx context.Context, runID, stepIndex int, wf workflow.Workflow, previousOutput string) error {
 	step := wf.Steps[stepIndex]
 
 	payload, err := json.Marshal(struct {
-		Command string `json:"command"`
-	}{Command: step.Command})
+		Command        string `json:"command"`
+		PreviousOutput string `json:"previous_output,omitempty"`
+	}{Command: step.Command, PreviousOutput: previousOutput})
 	if err != nil {
 		return err
 	}
