@@ -21,430 +21,6 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type SubmitJobRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	MaxRetries    int32                  `protobuf:"varint,1,opt,name=max_retries,json=maxRetries,proto3" json:"max_retries,omitempty"`
-	Type          string                 `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
-	Payload       string                 `protobuf:"bytes,3,opt,name=payload,proto3" json:"payload,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *SubmitJobRequest) Reset() {
-	*x = SubmitJobRequest{}
-	mi := &file_proto_orchestrator_proto_msgTypes[0]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *SubmitJobRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SubmitJobRequest) ProtoMessage() {}
-
-func (x *SubmitJobRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_orchestrator_proto_msgTypes[0]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use SubmitJobRequest.ProtoReflect.Descriptor instead.
-func (*SubmitJobRequest) Descriptor() ([]byte, []int) {
-	return file_proto_orchestrator_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *SubmitJobRequest) GetMaxRetries() int32 {
-	if x != nil {
-		return x.MaxRetries
-	}
-	return 0
-}
-
-func (x *SubmitJobRequest) GetType() string {
-	if x != nil {
-		return x.Type
-	}
-	return ""
-}
-
-func (x *SubmitJobRequest) GetPayload() string {
-	if x != nil {
-		return x.Payload
-	}
-	return ""
-}
-
-type SubmitJobResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	JobId         int32                  `protobuf:"varint,1,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *SubmitJobResponse) Reset() {
-	*x = SubmitJobResponse{}
-	mi := &file_proto_orchestrator_proto_msgTypes[1]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *SubmitJobResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SubmitJobResponse) ProtoMessage() {}
-
-func (x *SubmitJobResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_orchestrator_proto_msgTypes[1]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use SubmitJobResponse.ProtoReflect.Descriptor instead.
-func (*SubmitJobResponse) Descriptor() ([]byte, []int) {
-	return file_proto_orchestrator_proto_rawDescGZIP(), []int{1}
-}
-
-func (x *SubmitJobResponse) GetJobId() int32 {
-	if x != nil {
-		return x.JobId
-	}
-	return 0
-}
-
-type GetJobRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	JobId         int32                  `protobuf:"varint,1,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GetJobRequest) Reset() {
-	*x = GetJobRequest{}
-	mi := &file_proto_orchestrator_proto_msgTypes[2]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GetJobRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetJobRequest) ProtoMessage() {}
-
-func (x *GetJobRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_orchestrator_proto_msgTypes[2]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetJobRequest.ProtoReflect.Descriptor instead.
-func (*GetJobRequest) Descriptor() ([]byte, []int) {
-	return file_proto_orchestrator_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *GetJobRequest) GetJobId() int32 {
-	if x != nil {
-		return x.JobId
-	}
-	return 0
-}
-
-type GetJobResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	JobId         int32                  `protobuf:"varint,1,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
-	Status        string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
-	RetryCount    int32                  `protobuf:"varint,3,opt,name=retry_count,json=retryCount,proto3" json:"retry_count,omitempty"`
-	MaxRetries    int32                  `protobuf:"varint,4,opt,name=max_retries,json=maxRetries,proto3" json:"max_retries,omitempty"`
-	Type          string                 `protobuf:"bytes,5,opt,name=type,proto3" json:"type,omitempty"`
-	Payload       string                 `protobuf:"bytes,6,opt,name=payload,proto3" json:"payload,omitempty"`
-	Output        string                 `protobuf:"bytes,7,opt,name=output,proto3" json:"output,omitempty"` // stdout from the completed job
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GetJobResponse) Reset() {
-	*x = GetJobResponse{}
-	mi := &file_proto_orchestrator_proto_msgTypes[3]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GetJobResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetJobResponse) ProtoMessage() {}
-
-func (x *GetJobResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_orchestrator_proto_msgTypes[3]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetJobResponse.ProtoReflect.Descriptor instead.
-func (*GetJobResponse) Descriptor() ([]byte, []int) {
-	return file_proto_orchestrator_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *GetJobResponse) GetJobId() int32 {
-	if x != nil {
-		return x.JobId
-	}
-	return 0
-}
-
-func (x *GetJobResponse) GetStatus() string {
-	if x != nil {
-		return x.Status
-	}
-	return ""
-}
-
-func (x *GetJobResponse) GetRetryCount() int32 {
-	if x != nil {
-		return x.RetryCount
-	}
-	return 0
-}
-
-func (x *GetJobResponse) GetMaxRetries() int32 {
-	if x != nil {
-		return x.MaxRetries
-	}
-	return 0
-}
-
-func (x *GetJobResponse) GetType() string {
-	if x != nil {
-		return x.Type
-	}
-	return ""
-}
-
-func (x *GetJobResponse) GetPayload() string {
-	if x != nil {
-		return x.Payload
-	}
-	return ""
-}
-
-func (x *GetJobResponse) GetOutput() string {
-	if x != nil {
-		return x.Output
-	}
-	return ""
-}
-
-type ListJobsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Status        string                 `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"` // optional filter — empty means all jobs
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ListJobsRequest) Reset() {
-	*x = ListJobsRequest{}
-	mi := &file_proto_orchestrator_proto_msgTypes[4]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ListJobsRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ListJobsRequest) ProtoMessage() {}
-
-func (x *ListJobsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_orchestrator_proto_msgTypes[4]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ListJobsRequest.ProtoReflect.Descriptor instead.
-func (*ListJobsRequest) Descriptor() ([]byte, []int) {
-	return file_proto_orchestrator_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *ListJobsRequest) GetStatus() string {
-	if x != nil {
-		return x.Status
-	}
-	return ""
-}
-
-type ListJobsResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Jobs          []*GetJobResponse      `protobuf:"bytes,1,rep,name=jobs,proto3" json:"jobs,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ListJobsResponse) Reset() {
-	*x = ListJobsResponse{}
-	mi := &file_proto_orchestrator_proto_msgTypes[5]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ListJobsResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ListJobsResponse) ProtoMessage() {}
-
-func (x *ListJobsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_orchestrator_proto_msgTypes[5]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ListJobsResponse.ProtoReflect.Descriptor instead.
-func (*ListJobsResponse) Descriptor() ([]byte, []int) {
-	return file_proto_orchestrator_proto_rawDescGZIP(), []int{5}
-}
-
-func (x *ListJobsResponse) GetJobs() []*GetJobResponse {
-	if x != nil {
-		return x.Jobs
-	}
-	return nil
-}
-
-type CancelJobRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	JobId         int32                  `protobuf:"varint,1,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *CancelJobRequest) Reset() {
-	*x = CancelJobRequest{}
-	mi := &file_proto_orchestrator_proto_msgTypes[6]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *CancelJobRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*CancelJobRequest) ProtoMessage() {}
-
-func (x *CancelJobRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_orchestrator_proto_msgTypes[6]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use CancelJobRequest.ProtoReflect.Descriptor instead.
-func (*CancelJobRequest) Descriptor() ([]byte, []int) {
-	return file_proto_orchestrator_proto_rawDescGZIP(), []int{6}
-}
-
-func (x *CancelJobRequest) GetJobId() int32 {
-	if x != nil {
-		return x.JobId
-	}
-	return 0
-}
-
-type CancelJobResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	JobId         int32                  `protobuf:"varint,1,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
-	Status        string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"` // "cancelled"
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *CancelJobResponse) Reset() {
-	*x = CancelJobResponse{}
-	mi := &file_proto_orchestrator_proto_msgTypes[7]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *CancelJobResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*CancelJobResponse) ProtoMessage() {}
-
-func (x *CancelJobResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_orchestrator_proto_msgTypes[7]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use CancelJobResponse.ProtoReflect.Descriptor instead.
-func (*CancelJobResponse) Descriptor() ([]byte, []int) {
-	return file_proto_orchestrator_proto_rawDescGZIP(), []int{7}
-}
-
-func (x *CancelJobResponse) GetJobId() int32 {
-	if x != nil {
-		return x.JobId
-	}
-	return 0
-}
-
-func (x *CancelJobResponse) GetStatus() string {
-	if x != nil {
-		return x.Status
-	}
-	return ""
-}
-
 type ReadySignal struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -453,7 +29,7 @@ type ReadySignal struct {
 
 func (x *ReadySignal) Reset() {
 	*x = ReadySignal{}
-	mi := &file_proto_orchestrator_proto_msgTypes[8]
+	mi := &file_proto_orchestrator_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -465,7 +41,7 @@ func (x *ReadySignal) String() string {
 func (*ReadySignal) ProtoMessage() {}
 
 func (x *ReadySignal) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_orchestrator_proto_msgTypes[8]
+	mi := &file_proto_orchestrator_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -478,7 +54,7 @@ func (x *ReadySignal) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReadySignal.ProtoReflect.Descriptor instead.
 func (*ReadySignal) Descriptor() ([]byte, []int) {
-	return file_proto_orchestrator_proto_rawDescGZIP(), []int{8}
+	return file_proto_orchestrator_proto_rawDescGZIP(), []int{0}
 }
 
 type HeartbeatSignal struct {
@@ -490,7 +66,7 @@ type HeartbeatSignal struct {
 
 func (x *HeartbeatSignal) Reset() {
 	*x = HeartbeatSignal{}
-	mi := &file_proto_orchestrator_proto_msgTypes[9]
+	mi := &file_proto_orchestrator_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -502,7 +78,7 @@ func (x *HeartbeatSignal) String() string {
 func (*HeartbeatSignal) ProtoMessage() {}
 
 func (x *HeartbeatSignal) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_orchestrator_proto_msgTypes[9]
+	mi := &file_proto_orchestrator_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -515,7 +91,7 @@ func (x *HeartbeatSignal) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HeartbeatSignal.ProtoReflect.Descriptor instead.
 func (*HeartbeatSignal) Descriptor() ([]byte, []int) {
-	return file_proto_orchestrator_proto_rawDescGZIP(), []int{9}
+	return file_proto_orchestrator_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *HeartbeatSignal) GetJobId() int32 {
@@ -529,15 +105,15 @@ type TaskResult struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	JobId         int32                  `protobuf:"varint,1,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
 	Success       bool                   `protobuf:"varint,2,opt,name=success,proto3" json:"success,omitempty"`
-	Error         string                 `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`   // populated if success=false
-	Output        string                 `protobuf:"bytes,4,opt,name=output,proto3" json:"output,omitempty"` // stdout captured from the command (success=true only)
+	Error         string                 `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`
+	Output        string                 `protobuf:"bytes,4,opt,name=output,proto3" json:"output,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *TaskResult) Reset() {
 	*x = TaskResult{}
-	mi := &file_proto_orchestrator_proto_msgTypes[10]
+	mi := &file_proto_orchestrator_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -549,7 +125,7 @@ func (x *TaskResult) String() string {
 func (*TaskResult) ProtoMessage() {}
 
 func (x *TaskResult) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_orchestrator_proto_msgTypes[10]
+	mi := &file_proto_orchestrator_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -562,7 +138,7 @@ func (x *TaskResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TaskResult.ProtoReflect.Descriptor instead.
 func (*TaskResult) Descriptor() ([]byte, []int) {
-	return file_proto_orchestrator_proto_rawDescGZIP(), []int{10}
+	return file_proto_orchestrator_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *TaskResult) GetJobId() int32 {
@@ -608,7 +184,7 @@ type WorkerMessage struct {
 
 func (x *WorkerMessage) Reset() {
 	*x = WorkerMessage{}
-	mi := &file_proto_orchestrator_proto_msgTypes[11]
+	mi := &file_proto_orchestrator_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -620,7 +196,7 @@ func (x *WorkerMessage) String() string {
 func (*WorkerMessage) ProtoMessage() {}
 
 func (x *WorkerMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_orchestrator_proto_msgTypes[11]
+	mi := &file_proto_orchestrator_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -633,7 +209,7 @@ func (x *WorkerMessage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkerMessage.ProtoReflect.Descriptor instead.
 func (*WorkerMessage) Descriptor() ([]byte, []int) {
-	return file_proto_orchestrator_proto_rawDescGZIP(), []int{11}
+	return file_proto_orchestrator_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *WorkerMessage) GetWorkerId() string {
@@ -712,7 +288,7 @@ type TaskAssignment struct {
 
 func (x *TaskAssignment) Reset() {
 	*x = TaskAssignment{}
-	mi := &file_proto_orchestrator_proto_msgTypes[12]
+	mi := &file_proto_orchestrator_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -724,7 +300,7 @@ func (x *TaskAssignment) String() string {
 func (*TaskAssignment) ProtoMessage() {}
 
 func (x *TaskAssignment) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_orchestrator_proto_msgTypes[12]
+	mi := &file_proto_orchestrator_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -737,7 +313,7 @@ func (x *TaskAssignment) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TaskAssignment.ProtoReflect.Descriptor instead.
 func (*TaskAssignment) Descriptor() ([]byte, []int) {
-	return file_proto_orchestrator_proto_rawDescGZIP(), []int{12}
+	return file_proto_orchestrator_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *TaskAssignment) GetJobId() int32 {
@@ -787,7 +363,7 @@ type ServerMessage struct {
 
 func (x *ServerMessage) Reset() {
 	*x = ServerMessage{}
-	mi := &file_proto_orchestrator_proto_msgTypes[13]
+	mi := &file_proto_orchestrator_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -799,7 +375,7 @@ func (x *ServerMessage) String() string {
 func (*ServerMessage) ProtoMessage() {}
 
 func (x *ServerMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_orchestrator_proto_msgTypes[13]
+	mi := &file_proto_orchestrator_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -812,7 +388,7 @@ func (x *ServerMessage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServerMessage.ProtoReflect.Descriptor instead.
 func (*ServerMessage) Descriptor() ([]byte, []int) {
-	return file_proto_orchestrator_proto_rawDescGZIP(), []int{13}
+	return file_proto_orchestrator_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *ServerMessage) GetPayload() isServerMessage_Payload {
@@ -841,379 +417,11 @@ type ServerMessage_Task struct {
 
 func (*ServerMessage_Task) isServerMessage_Payload() {}
 
-type TriggerWorkflowRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *TriggerWorkflowRequest) Reset() {
-	*x = TriggerWorkflowRequest{}
-	mi := &file_proto_orchestrator_proto_msgTypes[14]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *TriggerWorkflowRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*TriggerWorkflowRequest) ProtoMessage() {}
-
-func (x *TriggerWorkflowRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_orchestrator_proto_msgTypes[14]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use TriggerWorkflowRequest.ProtoReflect.Descriptor instead.
-func (*TriggerWorkflowRequest) Descriptor() ([]byte, []int) {
-	return file_proto_orchestrator_proto_rawDescGZIP(), []int{14}
-}
-
-func (x *TriggerWorkflowRequest) GetName() string {
-	if x != nil {
-		return x.Name
-	}
-	return ""
-}
-
-type TriggerWorkflowResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	RunId         int32                  `protobuf:"varint,1,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *TriggerWorkflowResponse) Reset() {
-	*x = TriggerWorkflowResponse{}
-	mi := &file_proto_orchestrator_proto_msgTypes[15]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *TriggerWorkflowResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*TriggerWorkflowResponse) ProtoMessage() {}
-
-func (x *TriggerWorkflowResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_orchestrator_proto_msgTypes[15]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use TriggerWorkflowResponse.ProtoReflect.Descriptor instead.
-func (*TriggerWorkflowResponse) Descriptor() ([]byte, []int) {
-	return file_proto_orchestrator_proto_rawDescGZIP(), []int{15}
-}
-
-func (x *TriggerWorkflowResponse) GetRunId() int32 {
-	if x != nil {
-		return x.RunId
-	}
-	return 0
-}
-
-type ListWorkflowsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ListWorkflowsRequest) Reset() {
-	*x = ListWorkflowsRequest{}
-	mi := &file_proto_orchestrator_proto_msgTypes[16]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ListWorkflowsRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ListWorkflowsRequest) ProtoMessage() {}
-
-func (x *ListWorkflowsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_orchestrator_proto_msgTypes[16]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ListWorkflowsRequest.ProtoReflect.Descriptor instead.
-func (*ListWorkflowsRequest) Descriptor() ([]byte, []int) {
-	return file_proto_orchestrator_proto_rawDescGZIP(), []int{16}
-}
-
-type WorkflowInfo struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	StepCount     int32                  `protobuf:"varint,2,opt,name=step_count,json=stepCount,proto3" json:"step_count,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *WorkflowInfo) Reset() {
-	*x = WorkflowInfo{}
-	mi := &file_proto_orchestrator_proto_msgTypes[17]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *WorkflowInfo) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*WorkflowInfo) ProtoMessage() {}
-
-func (x *WorkflowInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_orchestrator_proto_msgTypes[17]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use WorkflowInfo.ProtoReflect.Descriptor instead.
-func (*WorkflowInfo) Descriptor() ([]byte, []int) {
-	return file_proto_orchestrator_proto_rawDescGZIP(), []int{17}
-}
-
-func (x *WorkflowInfo) GetName() string {
-	if x != nil {
-		return x.Name
-	}
-	return ""
-}
-
-func (x *WorkflowInfo) GetStepCount() int32 {
-	if x != nil {
-		return x.StepCount
-	}
-	return 0
-}
-
-type ListWorkflowsResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Workflows     []*WorkflowInfo        `protobuf:"bytes,1,rep,name=workflows,proto3" json:"workflows,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ListWorkflowsResponse) Reset() {
-	*x = ListWorkflowsResponse{}
-	mi := &file_proto_orchestrator_proto_msgTypes[18]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ListWorkflowsResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ListWorkflowsResponse) ProtoMessage() {}
-
-func (x *ListWorkflowsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_orchestrator_proto_msgTypes[18]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ListWorkflowsResponse.ProtoReflect.Descriptor instead.
-func (*ListWorkflowsResponse) Descriptor() ([]byte, []int) {
-	return file_proto_orchestrator_proto_rawDescGZIP(), []int{18}
-}
-
-func (x *ListWorkflowsResponse) GetWorkflows() []*WorkflowInfo {
-	if x != nil {
-		return x.Workflows
-	}
-	return nil
-}
-
-type GetWorkflowStatusRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	RunId         int32                  `protobuf:"varint,1,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GetWorkflowStatusRequest) Reset() {
-	*x = GetWorkflowStatusRequest{}
-	mi := &file_proto_orchestrator_proto_msgTypes[19]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GetWorkflowStatusRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetWorkflowStatusRequest) ProtoMessage() {}
-
-func (x *GetWorkflowStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_orchestrator_proto_msgTypes[19]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetWorkflowStatusRequest.ProtoReflect.Descriptor instead.
-func (*GetWorkflowStatusRequest) Descriptor() ([]byte, []int) {
-	return file_proto_orchestrator_proto_rawDescGZIP(), []int{19}
-}
-
-func (x *GetWorkflowStatusRequest) GetRunId() int32 {
-	if x != nil {
-		return x.RunId
-	}
-	return 0
-}
-
-type GetWorkflowStatusResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	RunId         int32                  `protobuf:"varint,1,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
-	WorkflowName  string                 `protobuf:"bytes,2,opt,name=workflow_name,json=workflowName,proto3" json:"workflow_name,omitempty"`
-	Status        string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
-	CurrentStep   int32                  `protobuf:"varint,4,opt,name=current_step,json=currentStep,proto3" json:"current_step,omitempty"`
-	TotalSteps    int32                  `protobuf:"varint,5,opt,name=total_steps,json=totalSteps,proto3" json:"total_steps,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GetWorkflowStatusResponse) Reset() {
-	*x = GetWorkflowStatusResponse{}
-	mi := &file_proto_orchestrator_proto_msgTypes[20]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GetWorkflowStatusResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetWorkflowStatusResponse) ProtoMessage() {}
-
-func (x *GetWorkflowStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_orchestrator_proto_msgTypes[20]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetWorkflowStatusResponse.ProtoReflect.Descriptor instead.
-func (*GetWorkflowStatusResponse) Descriptor() ([]byte, []int) {
-	return file_proto_orchestrator_proto_rawDescGZIP(), []int{20}
-}
-
-func (x *GetWorkflowStatusResponse) GetRunId() int32 {
-	if x != nil {
-		return x.RunId
-	}
-	return 0
-}
-
-func (x *GetWorkflowStatusResponse) GetWorkflowName() string {
-	if x != nil {
-		return x.WorkflowName
-	}
-	return ""
-}
-
-func (x *GetWorkflowStatusResponse) GetStatus() string {
-	if x != nil {
-		return x.Status
-	}
-	return ""
-}
-
-func (x *GetWorkflowStatusResponse) GetCurrentStep() int32 {
-	if x != nil {
-		return x.CurrentStep
-	}
-	return 0
-}
-
-func (x *GetWorkflowStatusResponse) GetTotalSteps() int32 {
-	if x != nil {
-		return x.TotalSteps
-	}
-	return 0
-}
-
 var File_proto_orchestrator_proto protoreflect.FileDescriptor
 
 const file_proto_orchestrator_proto_rawDesc = "" +
 	"\n" +
-	"\x18proto/orchestrator.proto\x12\forchestrator\"a\n" +
-	"\x10SubmitJobRequest\x12\x1f\n" +
-	"\vmax_retries\x18\x01 \x01(\x05R\n" +
-	"maxRetries\x12\x12\n" +
-	"\x04type\x18\x02 \x01(\tR\x04type\x12\x18\n" +
-	"\apayload\x18\x03 \x01(\tR\apayload\"*\n" +
-	"\x11SubmitJobResponse\x12\x15\n" +
-	"\x06job_id\x18\x01 \x01(\x05R\x05jobId\"&\n" +
-	"\rGetJobRequest\x12\x15\n" +
-	"\x06job_id\x18\x01 \x01(\x05R\x05jobId\"\xc7\x01\n" +
-	"\x0eGetJobResponse\x12\x15\n" +
-	"\x06job_id\x18\x01 \x01(\x05R\x05jobId\x12\x16\n" +
-	"\x06status\x18\x02 \x01(\tR\x06status\x12\x1f\n" +
-	"\vretry_count\x18\x03 \x01(\x05R\n" +
-	"retryCount\x12\x1f\n" +
-	"\vmax_retries\x18\x04 \x01(\x05R\n" +
-	"maxRetries\x12\x12\n" +
-	"\x04type\x18\x05 \x01(\tR\x04type\x12\x18\n" +
-	"\apayload\x18\x06 \x01(\tR\apayload\x12\x16\n" +
-	"\x06output\x18\a \x01(\tR\x06output\")\n" +
-	"\x0fListJobsRequest\x12\x16\n" +
-	"\x06status\x18\x01 \x01(\tR\x06status\"D\n" +
-	"\x10ListJobsResponse\x120\n" +
-	"\x04jobs\x18\x01 \x03(\v2\x1c.orchestrator.GetJobResponseR\x04jobs\")\n" +
-	"\x10CancelJobRequest\x12\x15\n" +
-	"\x06job_id\x18\x01 \x01(\x05R\x05jobId\"B\n" +
-	"\x11CancelJobResponse\x12\x15\n" +
-	"\x06job_id\x18\x01 \x01(\x05R\x05jobId\x12\x16\n" +
-	"\x06status\x18\x02 \x01(\tR\x06status\"\r\n" +
+	"\x18proto/orchestrator.proto\x12\forchestrator\"\r\n" +
 	"\vReadySignal\"(\n" +
 	"\x0fHeartbeatSignal\x12\x15\n" +
 	"\x06job_id\x18\x01 \x01(\x05R\x05jobId\"k\n" +
@@ -1239,35 +447,8 @@ const file_proto_orchestrator_proto_rawDesc = "" +
 	"maxRetries\"N\n" +
 	"\rServerMessage\x122\n" +
 	"\x04task\x18\x01 \x01(\v2\x1c.orchestrator.TaskAssignmentH\x00R\x04taskB\t\n" +
-	"\apayload\",\n" +
-	"\x16TriggerWorkflowRequest\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\"0\n" +
-	"\x17TriggerWorkflowResponse\x12\x15\n" +
-	"\x06run_id\x18\x01 \x01(\x05R\x05runId\"\x16\n" +
-	"\x14ListWorkflowsRequest\"A\n" +
-	"\fWorkflowInfo\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1d\n" +
-	"\n" +
-	"step_count\x18\x02 \x01(\x05R\tstepCount\"Q\n" +
-	"\x15ListWorkflowsResponse\x128\n" +
-	"\tworkflows\x18\x01 \x03(\v2\x1a.orchestrator.WorkflowInfoR\tworkflows\"1\n" +
-	"\x18GetWorkflowStatusRequest\x12\x15\n" +
-	"\x06run_id\x18\x01 \x01(\x05R\x05runId\"\xb3\x01\n" +
-	"\x19GetWorkflowStatusResponse\x12\x15\n" +
-	"\x06run_id\x18\x01 \x01(\x05R\x05runId\x12#\n" +
-	"\rworkflow_name\x18\x02 \x01(\tR\fworkflowName\x12\x16\n" +
-	"\x06status\x18\x03 \x01(\tR\x06status\x12!\n" +
-	"\fcurrent_step\x18\x04 \x01(\x05R\vcurrentStep\x12\x1f\n" +
-	"\vtotal_steps\x18\x05 \x01(\x05R\n" +
-	"totalSteps2\xa7\x05\n" +
-	"\x13OrchestratorService\x12L\n" +
-	"\tSubmitJob\x12\x1e.orchestrator.SubmitJobRequest\x1a\x1f.orchestrator.SubmitJobResponse\x12C\n" +
-	"\x06GetJob\x12\x1b.orchestrator.GetJobRequest\x1a\x1c.orchestrator.GetJobResponse\x12I\n" +
-	"\bListJobs\x12\x1d.orchestrator.ListJobsRequest\x1a\x1e.orchestrator.ListJobsResponse\x12L\n" +
-	"\tCancelJob\x12\x1e.orchestrator.CancelJobRequest\x1a\x1f.orchestrator.CancelJobResponse\x12^\n" +
-	"\x0fTriggerWorkflow\x12$.orchestrator.TriggerWorkflowRequest\x1a%.orchestrator.TriggerWorkflowResponse\x12X\n" +
-	"\rListWorkflows\x12\".orchestrator.ListWorkflowsRequest\x1a#.orchestrator.ListWorkflowsResponse\x12d\n" +
-	"\x11GetWorkflowStatus\x12&.orchestrator.GetWorkflowStatusRequest\x1a'.orchestrator.GetWorkflowStatusResponse\x12D\n" +
+	"\apayload2[\n" +
+	"\x13OrchestratorService\x12D\n" +
 	"\x04Work\x12\x1b.orchestrator.WorkerMessage\x1a\x1b.orchestrator.ServerMessage(\x010\x01B%Z#github.com/Anshul439/Orqestra/protob\x06proto3"
 
 var (
@@ -1282,58 +463,27 @@ func file_proto_orchestrator_proto_rawDescGZIP() []byte {
 	return file_proto_orchestrator_proto_rawDescData
 }
 
-var file_proto_orchestrator_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
+var file_proto_orchestrator_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_proto_orchestrator_proto_goTypes = []any{
-	(*SubmitJobRequest)(nil),          // 0: orchestrator.SubmitJobRequest
-	(*SubmitJobResponse)(nil),         // 1: orchestrator.SubmitJobResponse
-	(*GetJobRequest)(nil),             // 2: orchestrator.GetJobRequest
-	(*GetJobResponse)(nil),            // 3: orchestrator.GetJobResponse
-	(*ListJobsRequest)(nil),           // 4: orchestrator.ListJobsRequest
-	(*ListJobsResponse)(nil),          // 5: orchestrator.ListJobsResponse
-	(*CancelJobRequest)(nil),          // 6: orchestrator.CancelJobRequest
-	(*CancelJobResponse)(nil),         // 7: orchestrator.CancelJobResponse
-	(*ReadySignal)(nil),               // 8: orchestrator.ReadySignal
-	(*HeartbeatSignal)(nil),           // 9: orchestrator.HeartbeatSignal
-	(*TaskResult)(nil),                // 10: orchestrator.TaskResult
-	(*WorkerMessage)(nil),             // 11: orchestrator.WorkerMessage
-	(*TaskAssignment)(nil),            // 12: orchestrator.TaskAssignment
-	(*ServerMessage)(nil),             // 13: orchestrator.ServerMessage
-	(*TriggerWorkflowRequest)(nil),    // 14: orchestrator.TriggerWorkflowRequest
-	(*TriggerWorkflowResponse)(nil),   // 15: orchestrator.TriggerWorkflowResponse
-	(*ListWorkflowsRequest)(nil),      // 16: orchestrator.ListWorkflowsRequest
-	(*WorkflowInfo)(nil),              // 17: orchestrator.WorkflowInfo
-	(*ListWorkflowsResponse)(nil),     // 18: orchestrator.ListWorkflowsResponse
-	(*GetWorkflowStatusRequest)(nil),  // 19: orchestrator.GetWorkflowStatusRequest
-	(*GetWorkflowStatusResponse)(nil), // 20: orchestrator.GetWorkflowStatusResponse
+	(*ReadySignal)(nil),     // 0: orchestrator.ReadySignal
+	(*HeartbeatSignal)(nil), // 1: orchestrator.HeartbeatSignal
+	(*TaskResult)(nil),      // 2: orchestrator.TaskResult
+	(*WorkerMessage)(nil),   // 3: orchestrator.WorkerMessage
+	(*TaskAssignment)(nil),  // 4: orchestrator.TaskAssignment
+	(*ServerMessage)(nil),   // 5: orchestrator.ServerMessage
 }
 var file_proto_orchestrator_proto_depIdxs = []int32{
-	3,  // 0: orchestrator.ListJobsResponse.jobs:type_name -> orchestrator.GetJobResponse
-	8,  // 1: orchestrator.WorkerMessage.ready:type_name -> orchestrator.ReadySignal
-	10, // 2: orchestrator.WorkerMessage.result:type_name -> orchestrator.TaskResult
-	9,  // 3: orchestrator.WorkerMessage.heartbeat:type_name -> orchestrator.HeartbeatSignal
-	12, // 4: orchestrator.ServerMessage.task:type_name -> orchestrator.TaskAssignment
-	17, // 5: orchestrator.ListWorkflowsResponse.workflows:type_name -> orchestrator.WorkflowInfo
-	0,  // 6: orchestrator.OrchestratorService.SubmitJob:input_type -> orchestrator.SubmitJobRequest
-	2,  // 7: orchestrator.OrchestratorService.GetJob:input_type -> orchestrator.GetJobRequest
-	4,  // 8: orchestrator.OrchestratorService.ListJobs:input_type -> orchestrator.ListJobsRequest
-	6,  // 9: orchestrator.OrchestratorService.CancelJob:input_type -> orchestrator.CancelJobRequest
-	14, // 10: orchestrator.OrchestratorService.TriggerWorkflow:input_type -> orchestrator.TriggerWorkflowRequest
-	16, // 11: orchestrator.OrchestratorService.ListWorkflows:input_type -> orchestrator.ListWorkflowsRequest
-	19, // 12: orchestrator.OrchestratorService.GetWorkflowStatus:input_type -> orchestrator.GetWorkflowStatusRequest
-	11, // 13: orchestrator.OrchestratorService.Work:input_type -> orchestrator.WorkerMessage
-	1,  // 14: orchestrator.OrchestratorService.SubmitJob:output_type -> orchestrator.SubmitJobResponse
-	3,  // 15: orchestrator.OrchestratorService.GetJob:output_type -> orchestrator.GetJobResponse
-	5,  // 16: orchestrator.OrchestratorService.ListJobs:output_type -> orchestrator.ListJobsResponse
-	7,  // 17: orchestrator.OrchestratorService.CancelJob:output_type -> orchestrator.CancelJobResponse
-	15, // 18: orchestrator.OrchestratorService.TriggerWorkflow:output_type -> orchestrator.TriggerWorkflowResponse
-	18, // 19: orchestrator.OrchestratorService.ListWorkflows:output_type -> orchestrator.ListWorkflowsResponse
-	20, // 20: orchestrator.OrchestratorService.GetWorkflowStatus:output_type -> orchestrator.GetWorkflowStatusResponse
-	13, // 21: orchestrator.OrchestratorService.Work:output_type -> orchestrator.ServerMessage
-	14, // [14:22] is the sub-list for method output_type
-	6,  // [6:14] is the sub-list for method input_type
-	6,  // [6:6] is the sub-list for extension type_name
-	6,  // [6:6] is the sub-list for extension extendee
-	0,  // [0:6] is the sub-list for field type_name
+	0, // 0: orchestrator.WorkerMessage.ready:type_name -> orchestrator.ReadySignal
+	2, // 1: orchestrator.WorkerMessage.result:type_name -> orchestrator.TaskResult
+	1, // 2: orchestrator.WorkerMessage.heartbeat:type_name -> orchestrator.HeartbeatSignal
+	4, // 3: orchestrator.ServerMessage.task:type_name -> orchestrator.TaskAssignment
+	3, // 4: orchestrator.OrchestratorService.Work:input_type -> orchestrator.WorkerMessage
+	5, // 5: orchestrator.OrchestratorService.Work:output_type -> orchestrator.ServerMessage
+	5, // [5:6] is the sub-list for method output_type
+	4, // [4:5] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_proto_orchestrator_proto_init() }
@@ -1341,12 +491,12 @@ func file_proto_orchestrator_proto_init() {
 	if File_proto_orchestrator_proto != nil {
 		return
 	}
-	file_proto_orchestrator_proto_msgTypes[11].OneofWrappers = []any{
+	file_proto_orchestrator_proto_msgTypes[3].OneofWrappers = []any{
 		(*WorkerMessage_Ready)(nil),
 		(*WorkerMessage_Result)(nil),
 		(*WorkerMessage_Heartbeat)(nil),
 	}
-	file_proto_orchestrator_proto_msgTypes[13].OneofWrappers = []any{
+	file_proto_orchestrator_proto_msgTypes[5].OneofWrappers = []any{
 		(*ServerMessage_Task)(nil),
 	}
 	type x struct{}
@@ -1355,7 +505,7 @@ func file_proto_orchestrator_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_orchestrator_proto_rawDesc), len(file_proto_orchestrator_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   21,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

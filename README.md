@@ -21,13 +21,13 @@ task list
 task status -- <job-id>
 ```
 
-The gRPC server is exposed on `localhost:50051`, so the CLI works from your host machine while the stack runs in Docker.
+The REST API is on `localhost:8080` (used by the CLI) and the gRPC stream is on `localhost:50051` (used by workers).
 
 ## Highlights
 
-- gRPC API for job submission, inspection, listing, cancellation, and workflow triggers
+- REST API for job submission, inspection, listing, cancellation, and workflow triggers
 - CLI client for local development and operator workflows
-- Distributed workers connected to the server over bidirectional gRPC streams
+- Distributed workers connected to the server over a bidirectional gRPC stream
 - Workers execute shell commands using Go's `os/exec` package, capturing stdout and stderr separately
 - Completed job stdout is persisted and accessible via the CLI and API
 - Sequential YAML workflows with per-step output chaining via `$PREVIOUS_OUTPUT`
@@ -39,8 +39,9 @@ The gRPC server is exposed on `localhost:50051`, so the CLI works from your host
 ## Architecture
 
 ```text
-cmd/cli  ──gRPC──►  cmd/server  ◄──gRPC stream──  cmd/worker
-                        ├── internal/server     (gRPC handlers + workflow engine)
+cmd/cli  ──HTTP──►  cmd/server  ◄──gRPC stream──  cmd/worker
+                        ├── internal/api        (REST handlers)
+                        ├── internal/server     (gRPC worker stream + workflow engine)
                         ├── internal/workflow   (workflow registry)
                         ├── internal/outbox     (relay: Postgres → Redis)
                         ├── internal/queue      (Redis queue)
@@ -215,9 +216,10 @@ task migrate:version
 | `REDIS_PASSWORD` | — | Redis password |
 | `REDIS_DB` | `0` | Redis DB index |
 | `REDIS_QUEUE_NAME` | `jobs` | Redis key prefix for queues |
-| `GRPC_ADDR` | `:50051` | gRPC server listen address |
+| `GRPC_ADDR` | `:50051` | gRPC listen address (worker connections) |
+| `HTTP_ADDR` | `:8080` | REST API listen address (CLI and external tools) |
 
-The CLI also reads `GRPC_ADDR`. If it is set to a listen-style value like `:50051`, the CLI treats it as `localhost:50051`.
+The CLI reads `HTTP_ADDR`. If set to a listen-style value like `:8080`, it treats it as `localhost:8080`.
 
 ## Regenerating Proto
 

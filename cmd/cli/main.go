@@ -1,18 +1,28 @@
 package main
 
 import (
-	"context"
+	"bytes"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
-
-	pb "github.com/Anshul439/Orqestra/proto"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
+
+func baseURL() string {
+	addr := os.Getenv("HTTP_ADDR")
+	if addr == "" {
+		addr = "localhost:8080"
+	}
+	// Strip leading colon so ":8080" becomes "localhost:8080".
+	if strings.HasPrefix(addr, ":") {
+		addr = "localhost" + addr
+	}
+	return "http://" + addr
+}
 
 func usage() {
 	fmt.Println("usage:")
@@ -25,19 +35,77 @@ func usage() {
 	fmt.Println("  go run ./cmd/cli workflow status <run-id>")
 }
 
-func grpcTarget() string {
-	target := os.Getenv("GRPC_ADDR")
-	if target == "" {
-		target = "localhost:50051"
+func doJSON(method, url string, body any) (map[string]any, error) {
+	var r io.Reader
+	if body != nil {
+		b, err := json.Marshal(body)
+		if err != nil {
+			return nil, err
+		}
+		r = bytes.NewReader(b)
 	}
 
-	// Server listen addresses often look like ":50051".
-	// For the client, treat that as localhost on the same port.
-	if strings.HasPrefix(target, ":") {
-		return "localhost" + target
+	req, err := http.NewRequest(method, url, r)
+	if err != nil {
+		return nil, err
+	}
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
 	}
 
-	return target
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var result map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode >= 400 {
+		if msg, ok := result["error"].(string); ok {
+			return nil, fmt.Errorf("%s", msg)
+		}
+		return nil, fmt.Errorf("HTTP %d", resp.StatusCode)
+	}
+
+	return result, nil
+}
+
+func doJSONArray(method, url string) ([]any, error) {
+	req, err := http.NewRequest(method, url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var result []any
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode >= 400 {
+		return nil, fmt.Errorf("HTTP %d", resp.StatusCode)
+	}
+
+	return result, nil
+}
+
+func intField(m map[string]any, key string) int {
+	v, _ := m[key].(float64)
+	return int(v)
+}
+
+func strField(m map[string]any, key string) string {
+	v, _ := m[key].(string)
+	return v
 }
 
 func main() {
@@ -46,18 +114,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	conn, err := grpc.NewClient(
-		grpcTarget(),
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	)
-	if err != nil {
-		fmt.Println("error creating gRPC client:", err)
-		os.Exit(1)
-	}
-
-	defer conn.Close()
-
-	client := pb.NewOrchestratorServiceClient(conn)
+	base := baseURL()
 
 	switch os.Args[1] {
 	case "submit":
@@ -69,33 +126,30 @@ func main() {
 		submitFlags.Parse(os.Args[2:])
 
 		if *command != "" {
-			// Task runner wraps CLI_ARGS in single quotes for shell safety.
-			// Strip them so the actual command is clean.
 			cmd := strings.Trim(*command, "'")
-			payloadBytes, err := json.Marshal(struct {
+			b, err := json.Marshal(struct {
 				Command string `json:"command"`
 			}{Command: cmd})
 			if err != nil {
 				fmt.Println("error marshaling command payload:", err)
 				os.Exit(1)
 			}
-			*payload = string(payloadBytes)
+			*payload = string(b)
 			if *jobType == "generic" {
 				*jobType = "shell"
 			}
 		}
 
-		resp, err := client.SubmitJob(context.Background(), &pb.SubmitJobRequest{
-			MaxRetries: int32(*retries),
-			Type:       *jobType,
-			Payload:    *payload,
+		result, err := doJSON(http.MethodPost, base+"/api/v1/jobs", map[string]any{
+			"type":        *jobType,
+			"payload":     *payload,
+			"max_retries": *retries,
 		})
-
 		if err != nil {
 			fmt.Println("error:", err)
 			os.Exit(1)
 		}
-		fmt.Printf("job submitted, id: %d (type=%s)\n", resp.JobId, *jobType)
+		fmt.Printf("job submitted, id: %d (type=%s)\n", intField(result, "job_id"), *jobType)
 
 	case "status":
 		if len(os.Args) < 3 {
@@ -103,38 +157,52 @@ func main() {
 			usage()
 			os.Exit(1)
 		}
-
 		id, err := strconv.Atoi(os.Args[2])
 		if err != nil {
 			fmt.Println("error: job id must be a number")
 			os.Exit(1)
 		}
 
-		resp, err := client.GetJob(context.Background(), &pb.GetJobRequest{JobId: int32(id)})
+		result, err := doJSON(http.MethodGet, fmt.Sprintf("%s/api/v1/jobs/%d", base, id), nil)
 		if err != nil {
 			fmt.Println("error:", err)
 			os.Exit(1)
 		}
 		fmt.Printf("job %d (%s): status=%s retries=%d/%d\n",
-			resp.JobId, resp.Type, resp.Status, resp.RetryCount, resp.MaxRetries)
-		if resp.Output != "" {
-			fmt.Printf("output:\n%s\n", resp.Output)
+			intField(result, "id"),
+			strField(result, "type"),
+			strField(result, "status"),
+			intField(result, "retry_count"),
+			intField(result, "max_retries"),
+		)
+		if out := strField(result, "output"); out != "" {
+			fmt.Printf("output:\n%s\n", out)
 		}
 
 	case "list":
 		listCmd := flag.NewFlagSet("list", flag.ExitOnError)
-		status := listCmd.String("status", "", "filter by status (pending, running, completed, failed)")
+		status := listCmd.String("status", "", "filter by status")
 		listCmd.Parse(os.Args[2:])
 
-		resp, err := client.ListJobs(context.Background(), &pb.ListJobsRequest{Status: *status})
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "error: %v\n", err)
-			os.Exit(1)
+		url := base + "/api/v1/jobs"
+		if *status != "" {
+			url += "?status=" + *status
 		}
 
-		for _, j := range resp.Jobs {
+		jobs, err := doJSONArray(http.MethodGet, url)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "error:", err)
+			os.Exit(1)
+		}
+		for _, raw := range jobs {
+			j, _ := raw.(map[string]any)
 			fmt.Printf("job %d (%s): status=%s retries=%d/%d\n",
-				j.JobId, j.Type, j.Status, j.RetryCount, j.MaxRetries)
+				intField(j, "id"),
+				strField(j, "type"),
+				strField(j, "status"),
+				intField(j, "retry_count"),
+				intField(j, "max_retries"),
+			)
 		}
 
 	case "cancel":
@@ -143,19 +211,18 @@ func main() {
 			usage()
 			os.Exit(1)
 		}
-
 		id, err := strconv.Atoi(os.Args[2])
 		if err != nil {
 			fmt.Println("error: job id must be a number")
 			os.Exit(1)
 		}
 
-		resp, err := client.CancelJob(context.Background(), &pb.CancelJobRequest{JobId: int32(id)})
+		_, err = doJSON(http.MethodPost, fmt.Sprintf("%s/api/v1/jobs/%d/cancel", base, id), nil)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			fmt.Fprintln(os.Stderr, "error:", err)
 			os.Exit(1)
 		}
-		fmt.Printf("job %d cancelled\n", resp.JobId)
+		fmt.Printf("job %d cancelled\n", id)
 
 	case "workflow":
 		if len(os.Args) < 3 {
@@ -166,13 +233,17 @@ func main() {
 
 		switch os.Args[2] {
 		case "list":
-			resp, err := client.ListWorkflows(context.Background(), &pb.ListWorkflowsRequest{})
+			wfs, err := doJSONArray(http.MethodGet, base+"/api/v1/workflows")
 			if err != nil {
 				fmt.Println("error:", err)
 				os.Exit(1)
 			}
-			for _, wf := range resp.Workflows {
-				fmt.Printf("%-20s (%d steps)\n", wf.Name, wf.StepCount)
+			for _, raw := range wfs {
+				wf, _ := raw.(map[string]any)
+				fmt.Printf("%-20s (%d steps)\n",
+					strField(wf, "name"),
+					intField(wf, "step_count"),
+				)
 			}
 
 		case "trigger":
@@ -180,12 +251,13 @@ func main() {
 				fmt.Println("error: missing workflow name")
 				os.Exit(1)
 			}
-			resp, err := client.TriggerWorkflow(context.Background(), &pb.TriggerWorkflowRequest{Name: os.Args[3]})
+			name := os.Args[3]
+			result, err := doJSON(http.MethodPost, fmt.Sprintf("%s/api/v1/workflows/%s/trigger", base, name), nil)
 			if err != nil {
 				fmt.Println("error:", err)
 				os.Exit(1)
 			}
-			fmt.Printf("workflow triggered, run id: %d\n", resp.RunId)
+			fmt.Printf("workflow triggered, run id: %d\n", intField(result, "run_id"))
 
 		case "status":
 			if len(os.Args) < 4 {
@@ -197,13 +269,18 @@ func main() {
 				fmt.Println("error: run id must be a number")
 				os.Exit(1)
 			}
-			resp, err := client.GetWorkflowStatus(context.Background(), &pb.GetWorkflowStatusRequest{RunId: int32(runID)})
+			result, err := doJSON(http.MethodGet, fmt.Sprintf("%s/api/v1/workflows/runs/%d", base, runID), nil)
 			if err != nil {
 				fmt.Println("error:", err)
 				os.Exit(1)
 			}
 			fmt.Printf("run %d (%s): status=%s step=%d/%d\n",
-				resp.RunId, resp.WorkflowName, resp.Status, resp.CurrentStep, resp.TotalSteps)
+				intField(result, "id"),
+				strField(result, "workflow_name"),
+				strField(result, "status"),
+				intField(result, "current_step"),
+				intField(result, "total_steps"),
+			)
 
 		default:
 			fmt.Printf("error: unknown workflow subcommand %q\n", os.Args[2])
@@ -216,5 +293,4 @@ func main() {
 		usage()
 		os.Exit(1)
 	}
-
 }

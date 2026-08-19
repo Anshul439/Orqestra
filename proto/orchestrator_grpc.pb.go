@@ -19,28 +19,15 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	OrchestratorService_SubmitJob_FullMethodName         = "/orchestrator.OrchestratorService/SubmitJob"
-	OrchestratorService_GetJob_FullMethodName            = "/orchestrator.OrchestratorService/GetJob"
-	OrchestratorService_ListJobs_FullMethodName          = "/orchestrator.OrchestratorService/ListJobs"
-	OrchestratorService_CancelJob_FullMethodName         = "/orchestrator.OrchestratorService/CancelJob"
-	OrchestratorService_TriggerWorkflow_FullMethodName   = "/orchestrator.OrchestratorService/TriggerWorkflow"
-	OrchestratorService_ListWorkflows_FullMethodName     = "/orchestrator.OrchestratorService/ListWorkflows"
-	OrchestratorService_GetWorkflowStatus_FullMethodName = "/orchestrator.OrchestratorService/GetWorkflowStatus"
-	OrchestratorService_Work_FullMethodName              = "/orchestrator.OrchestratorService/Work"
+	OrchestratorService_Work_FullMethodName = "/orchestrator.OrchestratorService/Work"
 )
 
 // OrchestratorServiceClient is the client API for OrchestratorService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+//
+// Work is a bidirectional stream — worker sends ready/heartbeat/result, server sends job assignments.
 type OrchestratorServiceClient interface {
-	SubmitJob(ctx context.Context, in *SubmitJobRequest, opts ...grpc.CallOption) (*SubmitJobResponse, error)
-	GetJob(ctx context.Context, in *GetJobRequest, opts ...grpc.CallOption) (*GetJobResponse, error)
-	ListJobs(ctx context.Context, in *ListJobsRequest, opts ...grpc.CallOption) (*ListJobsResponse, error)
-	CancelJob(ctx context.Context, in *CancelJobRequest, opts ...grpc.CallOption) (*CancelJobResponse, error)
-	TriggerWorkflow(ctx context.Context, in *TriggerWorkflowRequest, opts ...grpc.CallOption) (*TriggerWorkflowResponse, error)
-	ListWorkflows(ctx context.Context, in *ListWorkflowsRequest, opts ...grpc.CallOption) (*ListWorkflowsResponse, error)
-	GetWorkflowStatus(ctx context.Context, in *GetWorkflowStatusRequest, opts ...grpc.CallOption) (*GetWorkflowStatusResponse, error)
-	// Work is a bidirectional stream — worker sends ready/result, server sends job assignments.
 	Work(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[WorkerMessage, ServerMessage], error)
 }
 
@@ -50,76 +37,6 @@ type orchestratorServiceClient struct {
 
 func NewOrchestratorServiceClient(cc grpc.ClientConnInterface) OrchestratorServiceClient {
 	return &orchestratorServiceClient{cc}
-}
-
-func (c *orchestratorServiceClient) SubmitJob(ctx context.Context, in *SubmitJobRequest, opts ...grpc.CallOption) (*SubmitJobResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(SubmitJobResponse)
-	err := c.cc.Invoke(ctx, OrchestratorService_SubmitJob_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *orchestratorServiceClient) GetJob(ctx context.Context, in *GetJobRequest, opts ...grpc.CallOption) (*GetJobResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetJobResponse)
-	err := c.cc.Invoke(ctx, OrchestratorService_GetJob_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *orchestratorServiceClient) ListJobs(ctx context.Context, in *ListJobsRequest, opts ...grpc.CallOption) (*ListJobsResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ListJobsResponse)
-	err := c.cc.Invoke(ctx, OrchestratorService_ListJobs_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *orchestratorServiceClient) CancelJob(ctx context.Context, in *CancelJobRequest, opts ...grpc.CallOption) (*CancelJobResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(CancelJobResponse)
-	err := c.cc.Invoke(ctx, OrchestratorService_CancelJob_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *orchestratorServiceClient) TriggerWorkflow(ctx context.Context, in *TriggerWorkflowRequest, opts ...grpc.CallOption) (*TriggerWorkflowResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(TriggerWorkflowResponse)
-	err := c.cc.Invoke(ctx, OrchestratorService_TriggerWorkflow_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *orchestratorServiceClient) ListWorkflows(ctx context.Context, in *ListWorkflowsRequest, opts ...grpc.CallOption) (*ListWorkflowsResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ListWorkflowsResponse)
-	err := c.cc.Invoke(ctx, OrchestratorService_ListWorkflows_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *orchestratorServiceClient) GetWorkflowStatus(ctx context.Context, in *GetWorkflowStatusRequest, opts ...grpc.CallOption) (*GetWorkflowStatusResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetWorkflowStatusResponse)
-	err := c.cc.Invoke(ctx, OrchestratorService_GetWorkflowStatus_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
 }
 
 func (c *orchestratorServiceClient) Work(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[WorkerMessage, ServerMessage], error) {
@@ -138,15 +55,9 @@ type OrchestratorService_WorkClient = grpc.BidiStreamingClient[WorkerMessage, Se
 // OrchestratorServiceServer is the server API for OrchestratorService service.
 // All implementations must embed UnimplementedOrchestratorServiceServer
 // for forward compatibility.
+//
+// Work is a bidirectional stream — worker sends ready/heartbeat/result, server sends job assignments.
 type OrchestratorServiceServer interface {
-	SubmitJob(context.Context, *SubmitJobRequest) (*SubmitJobResponse, error)
-	GetJob(context.Context, *GetJobRequest) (*GetJobResponse, error)
-	ListJobs(context.Context, *ListJobsRequest) (*ListJobsResponse, error)
-	CancelJob(context.Context, *CancelJobRequest) (*CancelJobResponse, error)
-	TriggerWorkflow(context.Context, *TriggerWorkflowRequest) (*TriggerWorkflowResponse, error)
-	ListWorkflows(context.Context, *ListWorkflowsRequest) (*ListWorkflowsResponse, error)
-	GetWorkflowStatus(context.Context, *GetWorkflowStatusRequest) (*GetWorkflowStatusResponse, error)
-	// Work is a bidirectional stream — worker sends ready/result, server sends job assignments.
 	Work(grpc.BidiStreamingServer[WorkerMessage, ServerMessage]) error
 	mustEmbedUnimplementedOrchestratorServiceServer()
 }
@@ -158,27 +69,6 @@ type OrchestratorServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedOrchestratorServiceServer struct{}
 
-func (UnimplementedOrchestratorServiceServer) SubmitJob(context.Context, *SubmitJobRequest) (*SubmitJobResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method SubmitJob not implemented")
-}
-func (UnimplementedOrchestratorServiceServer) GetJob(context.Context, *GetJobRequest) (*GetJobResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method GetJob not implemented")
-}
-func (UnimplementedOrchestratorServiceServer) ListJobs(context.Context, *ListJobsRequest) (*ListJobsResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method ListJobs not implemented")
-}
-func (UnimplementedOrchestratorServiceServer) CancelJob(context.Context, *CancelJobRequest) (*CancelJobResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method CancelJob not implemented")
-}
-func (UnimplementedOrchestratorServiceServer) TriggerWorkflow(context.Context, *TriggerWorkflowRequest) (*TriggerWorkflowResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method TriggerWorkflow not implemented")
-}
-func (UnimplementedOrchestratorServiceServer) ListWorkflows(context.Context, *ListWorkflowsRequest) (*ListWorkflowsResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method ListWorkflows not implemented")
-}
-func (UnimplementedOrchestratorServiceServer) GetWorkflowStatus(context.Context, *GetWorkflowStatusRequest) (*GetWorkflowStatusResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method GetWorkflowStatus not implemented")
-}
 func (UnimplementedOrchestratorServiceServer) Work(grpc.BidiStreamingServer[WorkerMessage, ServerMessage]) error {
 	return status.Error(codes.Unimplemented, "method Work not implemented")
 }
@@ -203,132 +93,6 @@ func RegisterOrchestratorServiceServer(s grpc.ServiceRegistrar, srv Orchestrator
 	s.RegisterService(&OrchestratorService_ServiceDesc, srv)
 }
 
-func _OrchestratorService_SubmitJob_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SubmitJobRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(OrchestratorServiceServer).SubmitJob(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: OrchestratorService_SubmitJob_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OrchestratorServiceServer).SubmitJob(ctx, req.(*SubmitJobRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _OrchestratorService_GetJob_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetJobRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(OrchestratorServiceServer).GetJob(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: OrchestratorService_GetJob_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OrchestratorServiceServer).GetJob(ctx, req.(*GetJobRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _OrchestratorService_ListJobs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListJobsRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(OrchestratorServiceServer).ListJobs(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: OrchestratorService_ListJobs_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OrchestratorServiceServer).ListJobs(ctx, req.(*ListJobsRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _OrchestratorService_CancelJob_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CancelJobRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(OrchestratorServiceServer).CancelJob(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: OrchestratorService_CancelJob_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OrchestratorServiceServer).CancelJob(ctx, req.(*CancelJobRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _OrchestratorService_TriggerWorkflow_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(TriggerWorkflowRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(OrchestratorServiceServer).TriggerWorkflow(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: OrchestratorService_TriggerWorkflow_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OrchestratorServiceServer).TriggerWorkflow(ctx, req.(*TriggerWorkflowRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _OrchestratorService_ListWorkflows_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListWorkflowsRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(OrchestratorServiceServer).ListWorkflows(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: OrchestratorService_ListWorkflows_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OrchestratorServiceServer).ListWorkflows(ctx, req.(*ListWorkflowsRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _OrchestratorService_GetWorkflowStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetWorkflowStatusRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(OrchestratorServiceServer).GetWorkflowStatus(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: OrchestratorService_GetWorkflowStatus_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OrchestratorServiceServer).GetWorkflowStatus(ctx, req.(*GetWorkflowStatusRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _OrchestratorService_Work_Handler(srv interface{}, stream grpc.ServerStream) error {
 	return srv.(OrchestratorServiceServer).Work(&grpc.GenericServerStream[WorkerMessage, ServerMessage]{ServerStream: stream})
 }
@@ -342,36 +106,7 @@ type OrchestratorService_WorkServer = grpc.BidiStreamingServer[WorkerMessage, Se
 var OrchestratorService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "orchestrator.OrchestratorService",
 	HandlerType: (*OrchestratorServiceServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "SubmitJob",
-			Handler:    _OrchestratorService_SubmitJob_Handler,
-		},
-		{
-			MethodName: "GetJob",
-			Handler:    _OrchestratorService_GetJob_Handler,
-		},
-		{
-			MethodName: "ListJobs",
-			Handler:    _OrchestratorService_ListJobs_Handler,
-		},
-		{
-			MethodName: "CancelJob",
-			Handler:    _OrchestratorService_CancelJob_Handler,
-		},
-		{
-			MethodName: "TriggerWorkflow",
-			Handler:    _OrchestratorService_TriggerWorkflow_Handler,
-		},
-		{
-			MethodName: "ListWorkflows",
-			Handler:    _OrchestratorService_ListWorkflows_Handler,
-		},
-		{
-			MethodName: "GetWorkflowStatus",
-			Handler:    _OrchestratorService_GetWorkflowStatus_Handler,
-		},
-	},
+	Methods:     []grpc.MethodDesc{},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "Work",

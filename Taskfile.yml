@@ -25,7 +25,7 @@ tasks:
       - go test -timeout 120s ./e2e/...
 
   server:
-    desc: Start the gRPC server
+    desc: Start the server (REST management API on HTTP_ADDR, gRPC worker stream on GRPC_ADDR)
     cmds:
       - go run ./cmd/server
 

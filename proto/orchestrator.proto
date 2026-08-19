@@ -4,47 +4,6 @@ package orchestrator;
 
 option go_package = "github.com/Anshul439/Orqestra/proto";
 
-message SubmitJobRequest {
-  int32  max_retries = 1;
-  string type        = 2;
-  string payload     = 3;
-}
-
-message SubmitJobResponse {
-  int32 job_id = 1;
-}
-
-message GetJobRequest {
-  int32 job_id = 1;
-}
-
-message GetJobResponse {
-  int32  job_id      = 1;
-  string status      = 2;
-  int32  retry_count = 3;
-  int32  max_retries = 4;
-  string type        = 5;
-  string payload     = 6;
-  string output      = 7;
-}
-
-message ListJobsRequest {
-  string status = 1; // optional filter — empty means all jobs
-}
-
-message ListJobsResponse {
-  repeated GetJobResponse jobs = 1;
-}
-
-message CancelJobRequest {
-  int32 job_id = 1;
-}
-
-message CancelJobResponse {
-  int32  job_id = 1;
-  string status = 2; // "cancelled"
-}
-
 message ReadySignal {}
 
 message HeartbeatSignal {
@@ -54,16 +13,16 @@ message HeartbeatSignal {
 message TaskResult {
   int32  job_id  = 1;
   bool   success = 2;
-  string error   = 3; // populated if success=false
-  string output  = 4; // empty when success=false
+  string error   = 3;
+  string output  = 4;
 }
 
 message WorkerMessage {
   string worker_id = 1;
   oneof payload {
-  ReadySignal     ready     = 2;
-  TaskResult      result    = 3;
-  HeartbeatSignal heartbeat = 4;
+    ReadySignal     ready     = 2;
+    TaskResult      result    = 3;
+    HeartbeatSignal heartbeat = 4;
   }
 }
 
@@ -81,46 +40,7 @@ message ServerMessage {
   }
 }
 
-message TriggerWorkflowRequest {
-  string name = 1;
-}
-
-message TriggerWorkflowResponse {
-  int32 run_id = 1;
-}
-
-message ListWorkflowsRequest {}
-
-message WorkflowInfo {
-  string name       = 1;
-  int32  step_count = 2;
-}
-
-message ListWorkflowsResponse {
-  repeated WorkflowInfo workflows = 1;
-}
-
-message GetWorkflowStatusRequest {
-  int32 run_id = 1;
-}
-
-message GetWorkflowStatusResponse {
-  int32  run_id        = 1;
-  string workflow_name = 2;
-  string status        = 3;
-  int32  current_step  = 4;
-  int32  total_steps   = 5;
-}
-
-
+// Work is a bidirectional stream — worker sends ready/heartbeat/result, server sends job assignments.
 service OrchestratorService {
-  rpc SubmitJob         (SubmitJobRequest)          returns (SubmitJobResponse);
-  rpc GetJob            (GetJobRequest)             returns (GetJobResponse);
-  rpc ListJobs          (ListJobsRequest)           returns (ListJobsResponse);
-  rpc CancelJob         (CancelJobRequest)          returns (CancelJobResponse);
-  rpc TriggerWorkflow   (TriggerWorkflowRequest)    returns (TriggerWorkflowResponse);
-  rpc ListWorkflows     (ListWorkflowsRequest)      returns (ListWorkflowsResponse);
-  rpc GetWorkflowStatus (GetWorkflowStatusRequest)  returns (GetWorkflowStatusResponse);
-  // Work is a bidirectional stream — worker sends ready/result, server sends job assignments.
-  rpc Work              (stream WorkerMessage)      returns (stream ServerMessage);
+  rpc Work (stream WorkerMessage) returns (stream ServerMessage);
 }

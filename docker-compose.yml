@@ -46,11 +46,13 @@ services:
       REDIS_DB: "0"
       REDIS_QUEUE_NAME: jobs
       GRPC_ADDR: :50051
+      HTTP_ADDR: :8080
       WORKER_COUNT: "1"
     volumes:
       - ./workflows:/workflows
     ports:
       - "50051:50051"
+      - "8080:8080"
     restart: unless-stopped
     depends_on:
       migrate:

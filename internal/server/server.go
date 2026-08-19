@@ -15,108 +15,20 @@ import (
 
 type Server struct {
 	pb.UnimplementedOrchestratorServiceServer
-	// db and queue are kept for the Work() stream, handleResult, and reaper —
-	// all of which manage heartbeat state alongside DB/queue operations.
+	// db and queue are used by Work(), handleResult, and the reaper.
 	db    *pgxpool.Pool
 	queue queue.Queue
 
-	jobs      *service.JobService
 	workflows *service.WorkflowService
 
 	lastSeen sync.Map
 	owner    sync.Map
 }
 
-func New(ctx context.Context, pool *pgxpool.Pool, q queue.Queue, jobs *service.JobService, workflows *service.WorkflowService) *Server {
-	s := &Server{db: pool, queue: q, jobs: jobs, workflows: workflows}
+func New(ctx context.Context, pool *pgxpool.Pool, q queue.Queue, workflows *service.WorkflowService) *Server {
+	s := &Server{db: pool, queue: q, workflows: workflows}
 	go s.runReaper(ctx)
 	return s
-}
-
-func (s *Server) SubmitJob(ctx context.Context, req *pb.SubmitJobRequest) (*pb.SubmitJobResponse, error) {
-	jobID, err := s.jobs.SubmitJob(ctx, int(req.MaxRetries), req.Type, req.Payload)
-	if err != nil {
-		return nil, err
-	}
-	return &pb.SubmitJobResponse{JobId: int32(jobID)}, nil
-}
-
-func (s *Server) GetJob(ctx context.Context, req *pb.GetJobRequest) (*pb.GetJobResponse, error) {
-	job, err := s.jobs.GetJob(ctx, int(req.JobId))
-	if err != nil {
-		return nil, err
-	}
-	return &pb.GetJobResponse{
-		JobId:      int32(job.ID),
-		Status:     job.Status,
-		RetryCount: int32(job.RetryCount),
-		MaxRetries: int32(job.MaxRetries),
-		Type:       job.Type,
-		Payload:    job.Payload,
-		Output:     job.Output,
-	}, nil
-}
-
-func (s *Server) ListJobs(ctx context.Context, req *pb.ListJobsRequest) (*pb.ListJobsResponse, error) {
-	jobs, err := s.jobs.ListJobs(ctx, req.Status)
-	if err != nil {
-		return nil, err
-	}
-	var resp []*pb.GetJobResponse
-	for _, j := range jobs {
-		resp = append(resp, &pb.GetJobResponse{
-			JobId:      int32(j.ID),
-			Status:     j.Status,
-			RetryCount: int32(j.RetryCount),
-			MaxRetries: int32(j.MaxRetries),
-			Type:       j.Type,
-			Payload:    j.Payload,
-			Output:     j.Output,
-		})
-	}
-	return &pb.ListJobsResponse{Jobs: resp}, nil
-}
-
-func (s *Server) CancelJob(ctx context.Context, req *pb.CancelJobRequest) (*pb.CancelJobResponse, error) {
-	jobID := int(req.JobId)
-	if err := s.jobs.CancelJob(ctx, jobID); err != nil {
-		return nil, err
-	}
-	s.clearOwnership(jobID)
-	return &pb.CancelJobResponse{JobId: int32(jobID), Status: "cancelled"}, nil
-}
-
-func (s *Server) TriggerWorkflow(ctx context.Context, req *pb.TriggerWorkflowRequest) (*pb.TriggerWorkflowResponse, error) {
-	runID, err := s.workflows.TriggerWorkflow(ctx, req.Name)
-	if err != nil {
-		return nil, err
-	}
-	return &pb.TriggerWorkflowResponse{RunId: int32(runID)}, nil
-}
-
-func (s *Server) ListWorkflows(_ context.Context, _ *pb.ListWorkflowsRequest) (*pb.ListWorkflowsResponse, error) {
-	var infos []*pb.WorkflowInfo
-	for _, wf := range s.workflows.ListWorkflows() {
-		infos = append(infos, &pb.WorkflowInfo{
-			Name:      wf.Name,
-			StepCount: int32(len(wf.Steps)),
-		})
-	}
-	return &pb.ListWorkflowsResponse{Workflows: infos}, nil
-}
-
-func (s *Server) GetWorkflowStatus(ctx context.Context, req *pb.GetWorkflowStatusRequest) (*pb.GetWorkflowStatusResponse, error) {
-	run, err := s.workflows.GetWorkflowStatus(ctx, int(req.RunId))
-	if err != nil {
-		return nil, err
-	}
-	return &pb.GetWorkflowStatusResponse{
-		RunId:        int32(run.ID),
-		WorkflowName: run.WorkflowName,
-		Status:       run.Status,
-		CurrentStep:  int32(run.CurrentStep),
-		TotalSteps:   int32(run.TotalSteps),
-	}, nil
 }
 
 func (s *Server) Work(stream pb.OrchestratorService_WorkServer) error {

@@ -7,7 +7,6 @@ import (
 
 	"github.com/Anshul439/Orqestra/internal/db"
 	"github.com/Anshul439/Orqestra/internal/queue"
-	"github.com/Anshul439/Orqestra/internal/service"
 	"github.com/Anshul439/Orqestra/internal/testutil"
 	pb "github.com/Anshul439/Orqestra/proto"
 )
@@ -131,49 +130,6 @@ func TestHandleResultIgnoresNonOwnerWorker(t *testing.T) {
 	}
 }
 
-func TestCancelJobClearsOwnership(t *testing.T) {
-	pool := testutil.NewPool(t)
-	testutil.Truncate(t, pool, "job_outbox", "jobs")
-
-	ctx := context.Background()
-	jobID, err := db.InsertJob(ctx, pool, 1, "shell", `{"command":"echo test"}`)
-	if err != nil {
-		t.Fatalf("InsertJob: %v", err)
-	}
-	if err := db.UpdateJobState(pool, jobID, "running", 0); err != nil {
-		t.Fatalf("UpdateJobState: %v", err)
-	}
-
-	q := &fakeQueue{}
-	s := &Server{db: pool, queue: q, jobs: service.NewJobService(pool, q)}
-	s.owner.Store(jobID, "worker-owner")
-	s.lastSeen.Store(jobID, time.Now())
-
-	resp, err := s.CancelJob(ctx, &pb.CancelJobRequest{JobId: int32(jobID)})
-	if err != nil {
-		t.Fatalf("CancelJob: %v", err)
-	}
-	if resp.Status != "cancelled" {
-		t.Fatalf("CancelJob status = %q, want %q", resp.Status, "cancelled")
-	}
-
-	row, err := db.GetJob(pool, jobID)
-	if err != nil {
-		t.Fatalf("GetJob: %v", err)
-	}
-	if row.Status != "cancelled" {
-		t.Fatalf("job status = %q, want %q", row.Status, "cancelled")
-	}
-	if _, ok := s.owner.Load(jobID); ok {
-		t.Fatal("owner entry was not cleared on cancel")
-	}
-	if _, ok := s.lastSeen.Load(jobID); ok {
-		t.Fatal("lastSeen entry was not cleared on cancel")
-	}
-	if len(q.canceled) != 1 || q.canceled[0].ID != jobID {
-		t.Fatalf("expected one queue cancel for job %d, got %+v", jobID, q.canceled)
-	}
-}
 
 func TestReaperReclaimsAndShieldRejectsStaleResult(t *testing.T) {
 	pool := testutil.NewPool(t)
