@@ -37,14 +37,11 @@ func redisAddr() string {
 
 type testEnv struct {
 	ctx     context.Context
-	baseURL string // HTTP management API
+	baseURL string
 	dialer  func(context.Context, string) (net.Conn, error)
 	lis     *bufconn.Listener
 }
 
-// newTestEnv spins up an in-process gRPC server (for workers) and an HTTP test
-// server (for management), an outbox relay, and a Redis queue.
-// All resources are cleaned up via t.Cleanup.
 func newTestEnv(t *testing.T, registry *workflow.Registry, queueName string) *testEnv {
 	t.Helper()
 
@@ -70,7 +67,6 @@ func newTestEnv(t *testing.T, registry *workflow.Registry, queueName string) *te
 	jobSvc := service.NewJobService(pool, q)
 	workflowSvc := service.NewWorkflowService(pool, registry)
 
-	// gRPC server — workers connect here via the Work() bidirectional stream.
 	lis := bufconn.Listen(1 << 20)
 	grpcSrv := grpc.NewServer()
 	pb.RegisterOrchestratorServiceServer(grpcSrv, server.New(ctx, pool, q, workflowSvc))
@@ -80,7 +76,6 @@ func newTestEnv(t *testing.T, registry *workflow.Registry, queueName string) *te
 	q.Start(ctx)
 	go outbox.Start(ctx, pool, q)
 
-	// HTTP server — management operations (submit, list, cancel, trigger, status).
 	h := api.NewHandler(jobSvc, workflowSvc)
 	httpSrv := httptest.NewServer(api.NewRouter(h))
 	t.Cleanup(httpSrv.Close)
@@ -208,9 +203,6 @@ func TestJobRetryLifecycle(t *testing.T) {
 	waitForJobStatus(t, env, jobID, "failed")
 }
 
-// runWorker starts a lightweight test worker that continuously requests tasks
-// and reports success or failure according to successFn(n), where n is the
-// 1-indexed call count.
 func runWorker(ctx context.Context, dialer func(context.Context, string) (net.Conn, error), successFn func(n int) bool) {
 	conn, err := grpc.NewClient("passthrough:///bufnet",
 		grpc.WithContextDialer(dialer),
@@ -255,9 +247,6 @@ func runWorker(ctx context.Context, dialer func(context.Context, string) (net.Co
 	}
 }
 
-// runWorkerWithOutput is like runWorker but also calls outputFn(n) to get the
-// Output field of each result, and sends each raw task payload to payloads
-// (non-blocking) so tests can inspect what the worker received.
 func runWorkerWithOutput(
 	ctx context.Context,
 	dialer func(context.Context, string) (net.Conn, error),
@@ -317,6 +306,28 @@ func runWorkerWithOutput(
 			},
 		})
 	}
+}
+
+func TestWorkflowDAGParallelExecution(t *testing.T) {
+	registry := workflow.NewRegistry()
+	registry.Register(workflow.Workflow{
+		Name: "dag-parallel-wf",
+		Steps: []workflow.Step{
+			{ID: "a", Command: "echo a"},
+			{ID: "b", Command: "echo b"},
+			{ID: "merge", Command: "echo merge", DependsOn: []string{"a", "b"}},
+		},
+	})
+
+	env := newTestEnv(t, registry, "e2e_dag")
+
+	go runWorker(env.ctx, env.dialer, func(_ int) bool { return true })
+	go runWorker(env.ctx, env.dialer, func(_ int) bool { return true })
+
+	result := env.post(t, "/api/v1/workflows/dag-parallel-wf/trigger", "")
+	runID := intResult(result, "run_id")
+
+	waitForWorkflowStatus(t, env, runID, "completed")
 }
 
 func TestWorkflowOutputChaining(t *testing.T) {

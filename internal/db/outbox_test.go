@@ -139,7 +139,7 @@ func TestInsertWorkflowStep_CreatesOutboxEntry(t *testing.T) {
 		t.Fatalf("CreateWorkflowRun: %v", err)
 	}
 
-	jobID, err := db.InsertWorkflowStep(ctx, pool, runID, 0, `{"command":"echo step0"}`)
+	jobID, err := db.InsertWorkflowStep(ctx, pool, runID, 0, 0, `{"command":"echo step0"}`)
 	if err != nil {
 		t.Fatalf("InsertWorkflowStep: %v", err)
 	}

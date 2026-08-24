@@ -34,14 +34,16 @@ func GetWorkflowRun(conn *pgxpool.Pool, id int) (WorkflowRunRow, error) {
 	return row, err
 }
 
-// AdvanceWorkflowRun increments current_step by 1.
-func AdvanceWorkflowRun(conn *pgxpool.Pool, id int) error {
-	_, err := conn.Exec(
+// AdvanceWorkflowRun increments the completed-step counter and returns the new
+// count, total_steps, and workflow_name in one round-trip so the caller can
+// detect completion and look up the workflow definition without a second query.
+func AdvanceWorkflowRun(conn *pgxpool.Pool, id int) (completedCount, totalSteps int, workflowName string, err error) {
+	err = conn.QueryRow(
 		context.Background(),
-		`UPDATE workflow_runs SET current_step = current_step + 1 WHERE id = $1`,
+		`UPDATE workflow_runs SET current_step = current_step + 1 WHERE id = $1 RETURNING current_step, total_steps, workflow_name`,
 		id,
-	)
-	return err
+	).Scan(&completedCount, &totalSteps, &workflowName)
+	return
 }
 
 func CompleteWorkflowRun(conn *pgxpool.Pool, id int) error {
@@ -60,4 +62,48 @@ func FailWorkflowRun(conn *pgxpool.Pool, id int) error {
 		id,
 	)
 	return err
+}
+
+func GetCompletedStepIndices(conn *pgxpool.Pool, runID int) (map[int]bool, error) {
+	rows, err := conn.Query(
+		context.Background(),
+		`SELECT step_index FROM jobs WHERE workflow_run_id = $1 AND status = 'completed' AND step_index IS NOT NULL`,
+		runID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make(map[int]bool)
+	for rows.Next() {
+		var idx int
+		if err := rows.Scan(&idx); err != nil {
+			return nil, err
+		}
+		result[idx] = true
+	}
+	return result, rows.Err()
+}
+
+func GetSubmittedStepIndices(conn *pgxpool.Pool, runID int) (map[int]bool, error) {
+	rows, err := conn.Query(
+		context.Background(),
+		`SELECT step_index FROM jobs WHERE workflow_run_id = $1 AND step_index IS NOT NULL`,
+		runID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make(map[int]bool)
+	for rows.Next() {
+		var idx int
+		if err := rows.Scan(&idx); err != nil {
+			return nil, err
+		}
+		result[idx] = true
+	}
+	return result, rows.Err()
 }

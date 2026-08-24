@@ -26,13 +26,17 @@ func (s *WorkflowService) TriggerWorkflow(ctx context.Context, name string) (int
 		return 0, fmt.Errorf("workflow %q not found", name)
 	}
 
+	wf.Normalize()
+
 	runID, err := db.CreateWorkflowRun(s.db, wf.Name, len(wf.Steps))
 	if err != nil {
 		return 0, err
 	}
 
-	if err := s.submitStep(ctx, runID, 0, wf, ""); err != nil {
-		return 0, err
+	for _, idx := range wf.UnblockedSteps(map[string]bool{}, map[int]bool{}) {
+		if err := s.submitStep(ctx, runID, idx, wf, ""); err != nil {
+			return 0, err
+		}
 	}
 
 	return runID, nil
@@ -46,41 +50,82 @@ func (s *WorkflowService) GetWorkflowStatus(_ context.Context, runID int) (db.Wo
 	return db.GetWorkflowRun(s.db, runID)
 }
 
-func (s *WorkflowService) Advance(ctx context.Context, runID, completedStepIndex int, previousOutput string) {
+func (s *WorkflowService) Advance(ctx context.Context, runID int) {
 	log := slog.Default()
 
-	run, err := db.GetWorkflowRun(s.db, runID)
+	completedCount, totalSteps, workflowName, err := db.AdvanceWorkflowRun(s.db, runID)
 	if err != nil {
-		log.Error("advanceWorkflow: failed to get workflow run", slog.Int("run_id", runID), slog.String("error", err.Error()))
+		log.Error("advance: failed to increment step counter", slog.Int("run_id", runID), slog.String("error", err.Error()))
 		return
 	}
 
-	nextStep := completedStepIndex + 1
-	if nextStep >= run.TotalSteps {
-		if err := db.AdvanceWorkflowRun(s.db, runID); err != nil {
-			log.Error("advanceWorkflow: failed to advance run", slog.Int("run_id", runID), slog.String("error", err.Error()))
-		}
+	if completedCount >= totalSteps {
 		if err := db.CompleteWorkflowRun(s.db, runID); err != nil {
-			log.Error("advanceWorkflow: failed to complete run", slog.Int("run_id", runID), slog.String("error", err.Error()))
+			log.Error("advance: failed to complete run", slog.Int("run_id", runID), slog.String("error", err.Error()))
 		}
 		return
 	}
 
-	if err := db.AdvanceWorkflowRun(s.db, runID); err != nil {
-		log.Error("advanceWorkflow: failed to advance run", slog.Int("run_id", runID), slog.String("error", err.Error()))
-	}
-
-	wf, ok := s.registry.Get(run.WorkflowName)
+	wf, ok := s.registry.Get(workflowName)
 	if !ok {
 		if err := db.FailWorkflowRun(s.db, runID); err != nil {
-			log.Error("advanceWorkflow: failed to fail run", slog.Int("run_id", runID), slog.String("error", err.Error()))
+			log.Error("advance: failed to fail run", slog.Int("run_id", runID), slog.String("error", err.Error()))
 		}
 		return
 	}
 
-	if err := s.submitStep(ctx, runID, nextStep, wf, previousOutput); err != nil {
-		log.Error("advanceWorkflow: failed to submit next step", slog.Int("run_id", runID), slog.Int("step", nextStep), slog.String("error", err.Error()))
+	wf.Normalize()
+
+	completedIndices, err := db.GetCompletedStepIndices(s.db, runID)
+	if err != nil {
+		log.Error("advance: failed to get completed step indices", slog.Int("run_id", runID), slog.String("error", err.Error()))
+		return
 	}
+	completedIDs := make(map[string]bool, len(completedIndices))
+	for idx := range completedIndices {
+		if idx < len(wf.Steps) {
+			completedIDs[wf.Steps[idx].ID] = true
+		}
+	}
+
+	submitted, err := db.GetSubmittedStepIndices(s.db, runID)
+	if err != nil {
+		log.Error("advance: failed to get submitted step indices", slog.Int("run_id", runID), slog.String("error", err.Error()))
+		return
+	}
+
+	for _, idx := range wf.UnblockedSteps(completedIDs, submitted) {
+		prevOutput := s.previousOutputFor(runID, idx, wf)
+		if err := s.submitStep(ctx, runID, idx, wf, prevOutput); err != nil {
+			log.Error("advance: failed to submit step", slog.Int("run_id", runID), slog.Int("step", idx), slog.String("error", err.Error()))
+		}
+	}
+}
+
+// previousOutputFor returns the output of the single dependency of a step,
+// for injecting as $PREVIOUS_OUTPUT. Returns "" for root steps or steps with
+// multiple dependencies.
+func (s *WorkflowService) previousOutputFor(runID, stepIndex int, wf workflow.Workflow) string {
+	step := wf.Steps[stepIndex]
+	if len(step.DependsOn) != 1 {
+		return ""
+	}
+	depID := step.DependsOn[0]
+	for i, ws := range wf.Steps {
+		if ws.ID == depID {
+			output, err := db.GetJobOutputByWorkflowStep(s.db, runID, i)
+			if err != nil {
+				slog.Default().Warn("advance: could not fetch dep output",
+					slog.Int("run_id", runID),
+					slog.String("dep", depID),
+					slog.String("error", err.Error()),
+				)
+				return ""
+			}
+			return output
+		}
+	}
+	return ""
 }
 
 func (s *WorkflowService) submitStep(ctx context.Context, runID, stepIndex int, wf workflow.Workflow, previousOutput string) error {
@@ -94,6 +139,6 @@ func (s *WorkflowService) submitStep(ctx context.Context, runID, stepIndex int, 
 		return err
 	}
 
-	_, err = db.InsertWorkflowStep(ctx, s.db, runID, stepIndex, string(payload))
+	_, err = db.InsertWorkflowStep(ctx, s.db, runID, stepIndex, step.Retries, string(payload))
 	return err
 }

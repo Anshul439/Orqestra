@@ -15,7 +15,6 @@ import (
 
 type Server struct {
 	pb.UnimplementedOrchestratorServiceServer
-	// db and queue are used by Work(), handleResult, and the reaper.
 	db    *pgxpool.Pool
 	queue queue.Queue
 
@@ -135,7 +134,7 @@ func (s *Server) handleResult(ctx context.Context, result *pb.TaskResult, sender
 		s.clearOwnership(jobID)
 
 		if row.WorkflowRunID != nil {
-			s.workflows.Advance(ctx, *row.WorkflowRunID, *row.StepIndex, result.Output)
+			s.workflows.Advance(ctx, *row.WorkflowRunID)
 		}
 		return
 	}

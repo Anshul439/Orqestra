@@ -1,0 +1,17 @@
+name: parallel_backup
+steps:
+  - id: backup-db
+    command: echo "db-backup-$(date +%s)" > /tmp/db.dump
+    retries: 2
+
+  - id: backup-redis
+    command: echo "redis-backup-$(date +%s)" > /tmp/redis.dump
+    retries: 2
+
+  - id: compress
+    command: tar -czf /tmp/backup.tar.gz /tmp/db.dump /tmp/redis.dump
+    depends_on: [backup-db, backup-redis]
+
+  - id: upload
+    command: ls -lh /tmp/backup.tar.gz
+    depends_on: [compress]

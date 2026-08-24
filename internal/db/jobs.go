@@ -44,9 +44,6 @@ func UpdateJobState(
 	return err
 }
 
-// ResetRunningJobs resets any jobs left in the "running" state back to "pending" and
-// creates fresh outbox entries for them. Called on startup to recover jobs that were
-// in-flight when the server last crashed or restarted.
 func ResetRunningJobs(conn *pgxpool.Pool) error {
 	_, err := conn.Exec(context.Background(), `
 		WITH reset AS (
@@ -85,6 +82,18 @@ func GetJob(conn *pgxpool.Pool, jobID int) (JobRow, error) {
 		Scan(&row.ID, &row.Status, &row.RetryCount, &row.MaxRetries, &row.Type, &row.Payload,
 			&row.Output, &row.WorkflowRunID, &row.StepIndex)
 	return row, err
+}
+
+func GetJobOutputByWorkflowStep(conn *pgxpool.Pool, runID, stepIndex int) (string, error) {
+	var output string
+	err := conn.QueryRow(context.Background(), `
+		SELECT COALESCE(output, '')
+		FROM jobs
+		WHERE workflow_run_id = $1 AND step_index = $2 AND status = 'completed'
+		LIMIT 1`,
+		runID, stepIndex,
+	).Scan(&output)
+	return output, err
 }
 
 func ListJobs(db *pgxpool.Pool, status string) ([]JobRow, error) {

@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -55,7 +56,7 @@ func InsertJob(
 func InsertWorkflowStep(
 	ctx context.Context,
 	pool *pgxpool.Pool,
-	workflowRunID, stepIndex int,
+	workflowRunID, stepIndex, maxRetries int,
 	payload string,
 ) (int, error) {
 	tx, err := pool.Begin(ctx)
@@ -67,10 +68,16 @@ func InsertWorkflowStep(
 	var jobID int
 	err = tx.QueryRow(ctx, `
 		INSERT INTO jobs (status, retry_count, max_retries, type, payload, workflow_run_id, step_index)
-		VALUES ('pending', 0, 0, 'shell', $1, $2, $3)
+		VALUES ('pending', 0, $1, 'shell', $2, $3, $4)
+		ON CONFLICT (workflow_run_id, step_index) DO NOTHING
 		RETURNING id`,
-		payload, workflowRunID, stepIndex,
+		maxRetries, payload, workflowRunID, stepIndex,
 	).Scan(&jobID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		// Another Advance call already submitted this step (parallel completion race).
+		// The existing job handles it; nothing to do.
+		return 0, tx.Commit(ctx)
+	}
 	if err != nil {
 		return 0, err
 	}
