@@ -16,6 +16,7 @@ import (
 	"github.com/Anshul439/Orqestra/internal/logger"
 	"github.com/Anshul439/Orqestra/internal/outbox"
 	"github.com/Anshul439/Orqestra/internal/queue"
+	"github.com/Anshul439/Orqestra/internal/scheduler"
 	"github.com/Anshul439/Orqestra/internal/server"
 	"github.com/Anshul439/Orqestra/internal/service"
 	"github.com/Anshul439/Orqestra/internal/workflow"
@@ -79,6 +80,8 @@ func main() {
 
 	jobSvc := service.NewJobService(poolConn, q)
 	workflowSvc := service.NewWorkflowService(poolConn, registry)
+
+	go scheduler.Start(ctx, registry, workflowSvc)
 
 	lis, err := net.Listen("tcp", cfg.GRPCAddr)
 	if err != nil {

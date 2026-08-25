@@ -17,8 +17,9 @@ type Step struct {
 }
 
 type Workflow struct {
-	Name  string `yaml:"name"`
-	Steps []Step `yaml:"steps"`
+	Name     string `yaml:"name"`
+	Schedule string `yaml:"schedule,omitempty"`
+	Steps    []Step `yaml:"steps"`
 }
 
 // Normalize auto-assigns IDs and fills sequential deps when no step declares

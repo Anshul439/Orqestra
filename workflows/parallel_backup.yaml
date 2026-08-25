@@ -1,17 +1,18 @@
 name: parallel_backup
+schedule: "0 2 * * *"
 steps:
   - id: backup-db
-    command: echo "db-backup-$(date +%s)" > /tmp/db.dump
+    command: pg_dump "$DATABASE_URL" > /tmp/db.sql
     retries: 2
 
   - id: backup-redis
-    command: echo "redis-backup-$(date +%s)" > /tmp/redis.dump
+    command: redis-cli --rdb /tmp/redis.rdb
     retries: 2
 
   - id: compress
-    command: tar -czf /tmp/backup.tar.gz /tmp/db.dump /tmp/redis.dump
+    command: tar -czf /tmp/backup-$(date +%Y%m%d).tar.gz /tmp/db.sql /tmp/redis.rdb
     depends_on: [backup-db, backup-redis]
 
   - id: upload
-    command: ls -lh /tmp/backup.tar.gz
+    command: aws s3 cp /tmp/backup-$(date +%Y%m%d).tar.gz s3://$S3_BUCKET/
     depends_on: [compress]
