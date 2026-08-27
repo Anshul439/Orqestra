@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+
 type Handler struct {
 	jobs      *service.JobService
 	workflows *service.WorkflowService
@@ -30,7 +31,9 @@ func NewRouter(h *Handler) http.Handler {
 
 	mux.HandleFunc("GET /api/v1/workflows", h.listWorkflows)
 	mux.HandleFunc("POST /api/v1/workflows/{name}/trigger", h.triggerWorkflow)
+	mux.HandleFunc("GET /api/v1/workflows/runs", h.listWorkflowRuns)
 	mux.HandleFunc("GET /api/v1/workflows/runs/{id}", h.getWorkflowStatus)
+	mux.HandleFunc("POST /api/v1/workflows/runs/{id}/cancel", h.cancelWorkflowRun)
 
 	return mux
 }
@@ -109,7 +112,48 @@ func (h *Handler) cancelJob(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) listWorkflows(w http.ResponseWriter, r *http.Request) {
 	wfs := h.workflows.ListWorkflows()
-	writeJSON(w, http.StatusOK, wfs)
+	type summary struct {
+		Name      string `json:"name"`
+		Schedule  string `json:"schedule,omitempty"`
+		StepCount int    `json:"step_count"`
+	}
+	result := make([]summary, len(wfs))
+	for i, wf := range wfs {
+		result[i] = summary{Name: wf.Name, Schedule: wf.Schedule, StepCount: len(wf.Steps)}
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
+func (h *Handler) listWorkflowRuns(w http.ResponseWriter, r *http.Request) {
+	runs, err := h.workflows.ListWorkflowRuns(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if runs == nil {
+		writeJSON(w, http.StatusOK, []struct{}{})
+		return
+	}
+	writeJSON(w, http.StatusOK, runs)
+}
+
+func (h *Handler) cancelWorkflowRun(w http.ResponseWriter, r *http.Request) {
+	id, err := pathInt(r, "id")
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid run id")
+		return
+	}
+
+	if err := h.workflows.CancelWorkflowRun(r.Context(), id); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			writeError(w, http.StatusNotFound, "workflow run not found or not running")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{"run_id": id, "status": "cancelled"})
 }
 
 func (h *Handler) triggerWorkflow(w http.ResponseWriter, r *http.Request) {

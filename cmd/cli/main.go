@@ -32,7 +32,9 @@ func usage() {
 	fmt.Println("  go run ./cmd/cli cancel <job-id>")
 	fmt.Println("  go run ./cmd/cli workflow list")
 	fmt.Println("  go run ./cmd/cli workflow trigger <name>")
+	fmt.Println("  go run ./cmd/cli workflow runs")
 	fmt.Println("  go run ./cmd/cli workflow status <run-id>")
+	fmt.Println("  go run ./cmd/cli workflow cancel <run-id>")
 }
 
 func doJSON(method, url string, body any) (map[string]any, error) {
@@ -240,10 +242,11 @@ func main() {
 			}
 			for _, raw := range wfs {
 				wf, _ := raw.(map[string]any)
-				fmt.Printf("%-20s (%d steps)\n",
-					strField(wf, "name"),
-					intField(wf, "step_count"),
-				)
+				line := fmt.Sprintf("%-20s (%d steps)", strField(wf, "name"), intField(wf, "step_count"))
+				if s := strField(wf, "schedule"); s != "" {
+					line += fmt.Sprintf(", schedule: %s", s)
+				}
+				fmt.Println(line)
 			}
 
 		case "trigger":
@@ -258,6 +261,23 @@ func main() {
 				os.Exit(1)
 			}
 			fmt.Printf("workflow triggered, run id: %d\n", intField(result, "run_id"))
+
+		case "runs":
+			runs, err := doJSONArray(http.MethodGet, base+"/api/v1/workflows/runs")
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "error:", err)
+				os.Exit(1)
+			}
+			for _, raw := range runs {
+				r, _ := raw.(map[string]any)
+				fmt.Printf("run %d (%s): status=%s step=%d/%d\n",
+					intField(r, "id"),
+					strField(r, "workflow_name"),
+					strField(r, "status"),
+					intField(r, "current_step"),
+					intField(r, "total_steps"),
+				)
+			}
 
 		case "status":
 			if len(os.Args) < 4 {
@@ -281,6 +301,23 @@ func main() {
 				intField(result, "current_step"),
 				intField(result, "total_steps"),
 			)
+
+		case "cancel":
+			if len(os.Args) < 4 {
+				fmt.Println("error: missing run id")
+				os.Exit(1)
+			}
+			runID, err := strconv.Atoi(os.Args[3])
+			if err != nil {
+				fmt.Println("error: run id must be a number")
+				os.Exit(1)
+			}
+			_, err = doJSON(http.MethodPost, fmt.Sprintf("%s/api/v1/workflows/runs/%d/cancel", base, runID), nil)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "error:", err)
+				os.Exit(1)
+			}
+			fmt.Printf("workflow run %d cancelled\n", runID)
 
 		default:
 			fmt.Printf("error: unknown workflow subcommand %q\n", os.Args[2])

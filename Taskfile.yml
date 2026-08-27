@@ -149,7 +149,17 @@ tasks:
     cmds:
       - go run ./cmd/cli workflow trigger {{.CLI_ARGS}}
 
+  workflow:runs:
+    desc: List all workflow runs
+    cmds:
+      - go run ./cmd/cli workflow runs
+
   workflow:status:
     desc: "Get workflow run status. Usage: task workflow:status -- <run_id>"
     cmds:
       - go run ./cmd/cli workflow status {{.CLI_ARGS}}
+
+  workflow:cancel:
+    desc: "Cancel a workflow run. Usage: task workflow:cancel -- <run_id>"
+    cmds:
+      - go run ./cmd/cli workflow cancel {{.CLI_ARGS}}

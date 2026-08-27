@@ -94,7 +94,7 @@ func (s *Server) Work(stream pb.OrchestratorService_WorkServer) error {
 			)
 
 		case *pb.WorkerMessage_Result:
-			inFlight = nil
+			inFlight = nil // clear before handleResult so a disconnect during processing doesn't re-queue
 			s.handleResult(stream.Context(), p.Result, workerID)
 		}
 	}

@@ -10,16 +10,16 @@ import (
 )
 
 type Step struct {
-	ID        string   `yaml:"id"`
-	Command   string   `yaml:"command"`
-	DependsOn []string `yaml:"depends_on,omitempty"`
-	Retries   int      `yaml:"retries,omitempty"`
+	ID        string   `yaml:"id"                   json:"id"`
+	Command   string   `yaml:"command"              json:"command"`
+	DependsOn []string `yaml:"depends_on,omitempty" json:"depends_on,omitempty"`
+	Retries   int      `yaml:"retries,omitempty"    json:"retries,omitempty"`
 }
 
 type Workflow struct {
-	Name     string `yaml:"name"`
-	Schedule string `yaml:"schedule,omitempty"`
-	Steps    []Step `yaml:"steps"`
+	Name     string `yaml:"name"               json:"name"`
+	Schedule string `yaml:"schedule,omitempty" json:"schedule,omitempty"`
+	Steps    []Step `yaml:"steps"              json:"steps"`
 }
 
 // Normalize auto-assigns IDs and fills sequential deps when no step declares

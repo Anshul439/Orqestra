@@ -3,11 +3,13 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 
 	"github.com/Anshul439/Orqestra/internal/db"
 	"github.com/Anshul439/Orqestra/internal/workflow"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -50,10 +52,24 @@ func (s *WorkflowService) GetWorkflowStatus(_ context.Context, runID int) (db.Wo
 	return db.GetWorkflowRun(s.db, runID)
 }
 
+func (s *WorkflowService) ListWorkflowRuns(_ context.Context) ([]db.WorkflowRunRow, error) {
+	return db.ListWorkflowRuns(s.db)
+}
+
+func (s *WorkflowService) CancelWorkflowRun(ctx context.Context, runID int) error {
+	if err := db.CancelWorkflowRun(s.db, runID); err != nil {
+		return err
+	}
+	return db.CancelPendingWorkflowJobs(ctx, s.db, runID)
+}
+
 func (s *WorkflowService) Advance(ctx context.Context, runID int) {
 	log := slog.Default()
 
 	completedCount, totalSteps, workflowName, err := db.AdvanceWorkflowRun(s.db, runID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return
+	}
 	if err != nil {
 		log.Error("advance: failed to increment step counter", slog.Int("run_id", runID), slog.String("error", err.Error()))
 		return
@@ -102,9 +118,8 @@ func (s *WorkflowService) Advance(ctx context.Context, runID int) {
 	}
 }
 
-// previousOutputFor returns the output of the single dependency of a step,
-// for injecting as $PREVIOUS_OUTPUT. Returns "" for root steps or steps with
-// multiple dependencies.
+// previousOutputFor returns the dep's output for $PREVIOUS_OUTPUT injection.
+// Only meaningful for steps with exactly one dependency; others get "".
 func (s *WorkflowService) previousOutputFor(runID, stepIndex int, wf workflow.Workflow) string {
 	step := wf.Steps[stepIndex]
 	if len(step.DependsOn) != 1 {

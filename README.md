@@ -74,7 +74,9 @@ task cancel -- <job-id>
 # Workflow commands
 task workflow:list
 task trigger -- docker_demo
+task workflow:runs
 task workflow:status -- <run-id>
+task workflow:cancel -- <run-id>
 
 # Reset local queue + database state
 task cleanup

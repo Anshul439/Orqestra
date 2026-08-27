@@ -192,6 +192,51 @@ func TestWorkflowFailure(t *testing.T) {
 	waitForWorkflowStatus(t, env, runID, "failed")
 }
 
+func TestListWorkflowRuns(t *testing.T) {
+	registry := workflow.NewRegistry()
+	registry.Register(workflow.Workflow{
+		Name:  "list-wf",
+		Steps: []workflow.Step{{Command: "echo ok"}},
+	})
+
+	env := newTestEnv(t, registry, "e2e_list_runs")
+	go runWorker(env.ctx, env.dialer, func(_ int) bool { return true })
+
+	result := env.post(t, "/api/v1/workflows/list-wf/trigger", "")
+	runID := intResult(result, "run_id")
+	waitForWorkflowStatus(t, env, runID, "completed")
+
+	var runs []any
+	r, err := http.Get(env.baseURL + "/api/v1/workflows/runs")
+	if err != nil {
+		t.Fatalf("GET /api/v1/workflows/runs: %v", err)
+	}
+	defer r.Body.Close()
+	if err := json.NewDecoder(r.Body).Decode(&runs); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(runs) == 0 {
+		t.Fatal("expected at least one workflow run in list")
+	}
+}
+
+func TestCancelWorkflowRun(t *testing.T) {
+	registry := workflow.NewRegistry()
+	registry.Register(workflow.Workflow{
+		Name:  "cancel-wf",
+		Steps: []workflow.Step{{Command: "sleep 30"}},
+	})
+
+	env := newTestEnv(t, registry, "e2e_cancel_run")
+	go runWorker(env.ctx, env.dialer, func(_ int) bool { return true })
+
+	result := env.post(t, "/api/v1/workflows/cancel-wf/trigger", "")
+	runID := intResult(result, "run_id")
+
+	env.post(t, fmt.Sprintf("/api/v1/workflows/runs/%d/cancel", runID), "")
+	waitForWorkflowStatus(t, env, runID, "cancelled")
+}
+
 func TestJobRetryLifecycle(t *testing.T) {
 	env := newTestEnv(t, workflow.NewRegistry(), "e2e_retry")
 
