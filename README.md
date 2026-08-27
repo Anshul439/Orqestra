@@ -147,6 +147,8 @@ Workflows are named sequences of shell commands executed in order. If any step f
 
 Workflow steps execute sequentially. If a step fails after exhausting its retries, the remaining steps are not scheduled.
 
+Cron-triggered runs will not start if a previous run of the same workflow is still active. Manual triggers via the CLI or API are not subject to this check.
+
 Drop `.yaml` files into the `workflows/` directory and restart the server. When using Docker, the directory is volume-mounted, so `docker compose restart server` is enough after changes.
 
 ### Output chaining

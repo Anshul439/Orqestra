@@ -26,7 +26,6 @@ func NewPool(t *testing.T) *pgxpool.Pool {
 	return pool
 }
 
-// Truncate empties the given tables in the test database.
 func Truncate(t *testing.T, pool *pgxpool.Pool, tables ...string) {
 	t.Helper()
 	for _, table := range tables {

@@ -46,11 +46,16 @@ func AdvanceWorkflowRun(conn *pgxpool.Pool, id int) (completedCount, totalSteps 
 	return
 }
 
-func CancelWorkflowRun(conn *pgxpool.Pool, id int) error {
-	tag, err := conn.Exec(
-		context.Background(),
+func CancelWorkflowRunAtomic(ctx context.Context, conn *pgxpool.Pool, runID int) error {
+	tx, err := conn.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	tag, err := tx.Exec(ctx,
 		`UPDATE workflow_runs SET status = 'cancelled' WHERE id = $1 AND status = 'running'`,
-		id,
+		runID,
 	)
 	if err != nil {
 		return err
@@ -58,11 +63,8 @@ func CancelWorkflowRun(conn *pgxpool.Pool, id int) error {
 	if tag.RowsAffected() == 0 {
 		return pgx.ErrNoRows
 	}
-	return nil
-}
 
-func CancelPendingWorkflowJobs(ctx context.Context, conn *pgxpool.Pool, runID int) error {
-	_, err := conn.Exec(ctx, `
+	_, err = tx.Exec(ctx, `
 		WITH cancelled AS (
 			UPDATE jobs
 			SET status = 'cancelled', updated_at = NOW()
@@ -73,7 +75,21 @@ func CancelPendingWorkflowJobs(ctx context.Context, conn *pgxpool.Pool, runID in
 		WHERE job_id IN (SELECT id FROM cancelled) AND processed = FALSE`,
 		runID,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
+}
+
+func HasActiveWorkflowRun(conn *pgxpool.Pool, workflowName string) (bool, error) {
+	var exists bool
+	err := conn.QueryRow(
+		context.Background(),
+		`SELECT EXISTS (SELECT 1 FROM workflow_runs WHERE workflow_name = $1 AND status = 'running')`,
+		workflowName,
+	).Scan(&exists)
+	return exists, err
 }
 
 func ListWorkflowRuns(conn *pgxpool.Pool) ([]WorkflowRunRow, error) {

@@ -127,7 +127,9 @@ func (s *Server) handleResult(ctx context.Context, result *pb.TaskResult, sender
 	}
 
 	if result.Success {
-		s.queue.Ack(ctx, queue.Job{ID: jobID})
+		if err := s.queue.Ack(ctx, queue.Job{ID: jobID}); err != nil {
+			log.Error("handleResult: failed to ack job", slog.Int("job_id", jobID), slog.String("error", err.Error()))
+		}
 		if err := db.CompleteJob(s.db, jobID, result.Output); err != nil {
 			log.Error("handleResult: failed to complete job", slog.Int("job_id", jobID), slog.String("error", err.Error()))
 		}

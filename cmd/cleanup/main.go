@@ -12,7 +12,6 @@ func main() {
 	cfg := config.LoadConfig()
 	ctx := context.Background()
 
-	// Clear Redis
 	rdb := redis.NewClient(&redis.Options{Addr: cfg.RedisAddr})
 	err := rdb.FlushAll(ctx).Err()
 	if err != nil {
@@ -21,7 +20,6 @@ func main() {
 		fmt.Println("cleared redis queue")
 	}
 
-	// Clear Postgres
 	pool, err := pgxpool.New(ctx, cfg.DBUrl)
 	if err != nil {
 		fmt.Printf("Postgres error: %v\n", err)

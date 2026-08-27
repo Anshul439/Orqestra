@@ -41,7 +41,6 @@ func NewRedisQueue(
 	}
 }
 
-// Start launches the background scheduler that promotes delayed jobs to the ready queue.
 func (q *RedisQueue) Start(ctx context.Context) {
 	ticker := time.NewTicker(q.schedulerInterval)
 
@@ -340,7 +339,6 @@ func (q *RedisQueue) Cancel(ctx context.Context, job Job) error {
 	return err
 }
 
-// promoteDueJobs moves delayed jobs whose scheduled time has passed into the ready queue.
 func (q *RedisQueue) promoteDueJobs(
 	ctx context.Context,
 ) error {

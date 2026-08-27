@@ -21,6 +21,20 @@ func Start(ctx context.Context, registry *workflow.Registry, workflowSvc *servic
 		name := wf.Name
 		schedule := wf.Schedule
 		_, err := c.AddFunc(wf.Schedule, func() {
+			active, err := workflowSvc.HasActiveRun(ctx, name)
+			if err != nil {
+				slog.Default().Error("scheduler: failed to check active run",
+					slog.String("workflow", name),
+					slog.String("error", err.Error()),
+				)
+				return
+			}
+			if active {
+				slog.Default().Warn("scheduler: skipping — previous run still active",
+					slog.String("workflow", name),
+				)
+				return
+			}
 			if _, err := workflowSvc.TriggerWorkflow(ctx, name); err != nil {
 				slog.Default().Error("scheduler: failed to trigger workflow",
 					slog.String("workflow", name),

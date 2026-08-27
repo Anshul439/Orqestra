@@ -52,15 +52,16 @@ func (s *WorkflowService) GetWorkflowStatus(_ context.Context, runID int) (db.Wo
 	return db.GetWorkflowRun(s.db, runID)
 }
 
+func (s *WorkflowService) HasActiveRun(_ context.Context, name string) (bool, error) {
+	return db.HasActiveWorkflowRun(s.db, name)
+}
+
 func (s *WorkflowService) ListWorkflowRuns(_ context.Context) ([]db.WorkflowRunRow, error) {
 	return db.ListWorkflowRuns(s.db)
 }
 
 func (s *WorkflowService) CancelWorkflowRun(ctx context.Context, runID int) error {
-	if err := db.CancelWorkflowRun(s.db, runID); err != nil {
-		return err
-	}
-	return db.CancelPendingWorkflowJobs(ctx, s.db, runID)
+	return db.CancelWorkflowRunAtomic(ctx, s.db, runID)
 }
 
 func (s *WorkflowService) Advance(ctx context.Context, runID int) {
