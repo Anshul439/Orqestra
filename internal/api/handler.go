@@ -9,6 +9,7 @@ import (
 
 	"github.com/Anshul439/Orqestra/internal/service"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 
@@ -21,7 +22,7 @@ func NewHandler(jobs *service.JobService, workflows *service.WorkflowService) *H
 	return &Handler{jobs: jobs, workflows: workflows}
 }
 
-func NewRouter(h *Handler) http.Handler {
+func NewRouter(h *Handler, pool *pgxpool.Pool) http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("POST /api/v1/jobs", h.submitJob)
@@ -35,7 +36,7 @@ func NewRouter(h *Handler) http.Handler {
 	mux.HandleFunc("GET /api/v1/workflows/runs/{id}", h.getWorkflowStatus)
 	mux.HandleFunc("POST /api/v1/workflows/runs/{id}/cancel", h.cancelWorkflowRun)
 
-	return mux
+	return authMiddleware(pool, mux)
 }
 
 func (h *Handler) submitJob(w http.ResponseWriter, r *http.Request) {

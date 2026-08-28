@@ -34,6 +34,11 @@ tasks:
     cmds:
       - go run ./cmd/worker
 
+  keygen:
+    desc: "Generate a new API key. Usage: task keygen -- my-key-name"
+    cmds:
+      - go run ./cmd/keygen {{.CLI_ARGS}}
+
   cleanup:
     desc: Wipe Redis queue and Postgres tables for a local reset
     cmds:

@@ -102,7 +102,7 @@ func main() {
 	h := api.NewHandler(jobSvc, workflowSvc)
 	httpSrv := &http.Server{
 		Addr:    cfg.HTTPAddr,
-		Handler: api.NewRouter(h),
+		Handler: api.NewRouter(h, poolConn),
 	}
 
 	go func() {

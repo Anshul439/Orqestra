@@ -23,9 +23,33 @@ task status -- <job-id>
 
 The REST API is on `localhost:8080` (used by the CLI) and the gRPC stream is on `localhost:50051` (used by workers).
 
+## Authentication
+
+All REST API endpoints require an API key. Generate one after running migrations:
+
+```bash
+task keygen -- my-key-name
+# API key (save this — it will not be shown again):
+# orq_abc123...
+```
+
+Set it in `.env` so the CLI picks it up automatically:
+
+```bash
+ORQESTRA_API_KEY=orq_abc123...
+```
+
+Or pass it directly with curl:
+
+```bash
+curl -H "Authorization: Bearer orq_abc123..." http://localhost:8080/api/v1/workflows
+```
+
+To revoke a key: `DELETE FROM api_keys WHERE name = 'my-key-name';`
+
 ## Highlights
 
-- REST API for job submission, inspection, listing, cancellation, and workflow triggers
+- API key authentication on all REST endpoints
 - CLI client for local development and operator workflows
 - Distributed workers connected to the server over a bidirectional gRPC stream
 - Workers execute shell commands using Go's `os/exec` package, capturing stdout and stderr separately
@@ -222,6 +246,7 @@ task migrate:version
 | `REDIS_QUEUE_NAME` | `jobs` | Redis key prefix for queues |
 | `GRPC_ADDR` | `:50051` | gRPC listen address (worker connections) |
 | `HTTP_ADDR` | `:8080` | REST API listen address (CLI and external tools) |
+| `ORQESTRA_API_KEY` | — | API key for CLI authentication (generate with `task keygen`) |
 
 The CLI reads `HTTP_ADDR`. If set to a listen-style value like `:8080`, it treats it as `localhost:8080`.
 

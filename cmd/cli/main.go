@@ -24,6 +24,10 @@ func baseURL() string {
 	return "http://" + addr
 }
 
+func apiKey() string {
+	return os.Getenv("ORQESTRA_API_KEY")
+}
+
 func usage() {
 	fmt.Println("usage:")
 	fmt.Println("  go run ./cmd/cli submit [--type=<type>] [--command=<shell>] [--payload=<json>] [--retries=<n>]")
@@ -54,6 +58,9 @@ func doJSON(method, url string, body any) (map[string]any, error) {
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
+	if key := apiKey(); key != "" {
+		req.Header.Set("Authorization", "Bearer "+key)
+	}
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -80,6 +87,9 @@ func doJSONArray(method, url string) ([]any, error) {
 	req, err := http.NewRequest(method, url, nil)
 	if err != nil {
 		return nil, err
+	}
+	if key := apiKey(); key != "" {
+		req.Header.Set("Authorization", "Bearer "+key)
 	}
 
 	resp, err := http.DefaultClient.Do(req)

@@ -2,8 +2,12 @@ package e2e_test
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -19,6 +23,7 @@ import (
 	"google.golang.org/grpc/test/bufconn"
 
 	"github.com/Anshul439/Orqestra/internal/api"
+	"github.com/Anshul439/Orqestra/internal/db"
 	"github.com/Anshul439/Orqestra/internal/outbox"
 	"github.com/Anshul439/Orqestra/internal/queue"
 	"github.com/Anshul439/Orqestra/internal/server"
@@ -38,6 +43,7 @@ func redisAddr() string {
 type testEnv struct {
 	ctx     context.Context
 	baseURL string
+	apiKey  string
 	dialer  func(context.Context, string) (net.Conn, error)
 	lis     *bufconn.Listener
 }
@@ -46,7 +52,17 @@ func newTestEnv(t *testing.T, registry *workflow.Registry, queueName string) *te
 	t.Helper()
 
 	pool := testutil.NewPool(t)
-	testutil.Truncate(t, pool, "job_outbox", "jobs", "workflow_runs")
+	testutil.Truncate(t, pool, "api_keys", "job_outbox", "jobs", "workflow_runs")
+
+	raw := make([]byte, 32)
+	if _, err := rand.Read(raw); err != nil {
+		t.Fatalf("generate api key: %v", err)
+	}
+	apiKey := "orq_" + hex.EncodeToString(raw)
+	hash := fmt.Sprintf("%x", sha256.Sum256([]byte(apiKey)))
+	if err := db.InsertAPIKey(context.Background(), pool, "test", hash); err != nil {
+		t.Fatalf("insert api key: %v", err)
+	}
 
 	rdb := gredis.NewClient(&gredis.Options{Addr: redisAddr()})
 	if err := rdb.Ping(context.Background()).Err(); err != nil {
@@ -77,7 +93,7 @@ func newTestEnv(t *testing.T, registry *workflow.Registry, queueName string) *te
 	go outbox.Start(ctx, pool, q)
 
 	h := api.NewHandler(jobSvc, workflowSvc)
-	httpSrv := httptest.NewServer(api.NewRouter(h))
+	httpSrv := httptest.NewServer(api.NewRouter(h, pool))
 	t.Cleanup(httpSrv.Close)
 
 	dialer := func(ctx context.Context, _ string) (net.Conn, error) { return lis.DialContext(ctx) }
@@ -85,6 +101,7 @@ func newTestEnv(t *testing.T, registry *workflow.Registry, queueName string) *te
 	return &testEnv{
 		ctx:     ctx,
 		baseURL: httpSrv.URL,
+		apiKey:  apiKey,
 		dialer:  dialer,
 		lis:     lis,
 	}
@@ -92,13 +109,17 @@ func newTestEnv(t *testing.T, registry *workflow.Registry, queueName string) *te
 
 func (e *testEnv) post(t *testing.T, path string, body string) map[string]any {
 	t.Helper()
-	var r *http.Response
-	var err error
+	var bodyReader io.Reader
 	if body != "" {
-		r, err = http.Post(e.baseURL+path, "application/json", strings.NewReader(body))
-	} else {
-		r, err = http.Post(e.baseURL+path, "application/json", nil)
+		bodyReader = strings.NewReader(body)
 	}
+	req, err := http.NewRequest(http.MethodPost, e.baseURL+path, bodyReader)
+	if err != nil {
+		t.Fatalf("POST %s: %v", path, err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+e.apiKey)
+	r, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatalf("POST %s: %v", path, err)
 	}
@@ -115,7 +136,12 @@ func (e *testEnv) post(t *testing.T, path string, body string) map[string]any {
 
 func (e *testEnv) get(t *testing.T, path string) map[string]any {
 	t.Helper()
-	r, err := http.Get(e.baseURL + path)
+	req, err := http.NewRequest(http.MethodGet, e.baseURL+path, nil)
+	if err != nil {
+		t.Fatalf("GET %s: %v", path, err)
+	}
+	req.Header.Set("Authorization", "Bearer "+e.apiKey)
+	r, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatalf("GET %s: %v", path, err)
 	}
@@ -207,7 +233,9 @@ func TestListWorkflowRuns(t *testing.T) {
 	waitForWorkflowStatus(t, env, runID, "completed")
 
 	var runs []any
-	r, err := http.Get(env.baseURL + "/api/v1/workflows/runs")
+	req, _ := http.NewRequest(http.MethodGet, env.baseURL+"/api/v1/workflows/runs", nil)
+	req.Header.Set("Authorization", "Bearer "+env.apiKey)
+	r, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatalf("GET /api/v1/workflows/runs: %v", err)
 	}
@@ -373,6 +401,33 @@ func TestWorkflowDAGParallelExecution(t *testing.T) {
 	runID := intResult(result, "run_id")
 
 	waitForWorkflowStatus(t, env, runID, "completed")
+}
+
+func TestAuthMiddleware(t *testing.T) {
+	env := newTestEnv(t, workflow.NewRegistry(), "e2e_auth")
+
+	do := func(key string) int {
+		req, _ := http.NewRequest(http.MethodGet, env.baseURL+"/api/v1/workflows", nil)
+		if key != "" {
+			req.Header.Set("Authorization", "Bearer "+key)
+		}
+		r, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatalf("request failed: %v", err)
+		}
+		r.Body.Close()
+		return r.StatusCode
+	}
+
+	if got := do(""); got != http.StatusUnauthorized {
+		t.Errorf("no key: got %d, want 401", got)
+	}
+	if got := do("orq_wrongkey"); got != http.StatusUnauthorized {
+		t.Errorf("wrong key: got %d, want 401", got)
+	}
+	if got := do(env.apiKey); got != http.StatusOK {
+		t.Errorf("valid key: got %d, want 200", got)
+	}
 }
 
 func TestWorkflowOutputChaining(t *testing.T) {
