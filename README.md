@@ -1,64 +1,46 @@
 # Orqestra
 
-Orqestra is a distributed job orchestrator written in Go for reliable background job execution. It uses bidirectional gRPC to coordinate distributed workers, Postgres as the source of truth, and Redis for queueing and delayed retries.
+Orqestra is a distributed job orchestrator written in Go for reliable background job execution. It separates job persistence, queueing, and execution so jobs survive server and worker failures without being lost.
+
+Workers connect to the server over a bidirectional gRPC stream. Jobs are persisted to Postgres via a transactional outbox before being relayed to Redis, so the queue is always recoverable from the database.
 
 ## Quick Start
 
-The fastest way to run the full stack is with Docker Compose.
-
 ```bash
-# Copy env config
 cp .env.example .env
 
-# Start Postgres, Redis, server, and worker
+# Start Postgres and Redis
 task docker:up
 
+# Apply migrations
+task migrate:up
+
+# Generate an API key and add it to .env as ORQESTRA_API_KEY
+orqestra-keygen my-key
+
+# Terminal 1
+task server
+
+# Terminal 2
+task worker
+
 # Submit a job
-task submit -- "echo hello world"
-
-# Inspect jobs
-task list
-task status -- <job-id>
+orq submit --type=shell --command "echo hello world"
 ```
 
-The REST API is on `localhost:8080` (used by the CLI) and the gRPC stream is on `localhost:50051` (used by workers).
-
-## Authentication
-
-All REST API endpoints require an API key. Generate one after running migrations:
-
-```bash
-task keygen -- my-key-name
-# API key (save this — it will not be shown again):
-# orq_abc123...
-```
-
-Set it in `.env` so the CLI picks it up automatically:
-
-```bash
-ORQESTRA_API_KEY=orq_abc123...
-```
-
-Or pass it directly with curl:
-
-```bash
-curl -H "Authorization: Bearer orq_abc123..." http://localhost:8080/api/v1/workflows
-```
-
-To revoke a key: `DELETE FROM api_keys WHERE name = 'my-key-name';`
+The REST API listens on `localhost:8080` (CLI) and gRPC on `localhost:50051` (workers).
 
 ## Highlights
 
+- DAG-based workflows with `depends_on` for parallel step execution
+- Cron scheduling for automated workflow triggers
+- Transactional outbox — jobs are written to Postgres atomically before Redis enqueue
+- Crash recovery — interrupted jobs are re-queued on server restart
+- Exponential backoff retries with configurable limits
+- Per-step output chaining via `$PREVIOUS_OUTPUT`
 - API key authentication on all REST endpoints
-- CLI client for local development and operator workflows
-- Distributed workers connected to the server over a bidirectional gRPC stream
-- Workers execute shell commands using Go's `os/exec` package, capturing stdout and stderr separately
-- Completed job stdout is persisted and accessible via the CLI and API
-- Sequential YAML workflows with per-step output chaining via `$PREVIOUS_OUTPUT`
-- Exponential backoff retries with configurable retry limits
-- Transactional outbox pattern for crash-safe job dispatch
-- Crash recovery for jobs interrupted by server or worker failures
-- Durable job persistence backed by Postgres
+- Redis is used behind a queue interface, keeping orchestration decoupled from the queue backend
+- CLI (`orq`) for job submission, inspection, and workflow management
 
 ## Architecture
 
@@ -74,164 +56,63 @@ cmd/cli  ──HTTP──►  cmd/server  ◄──gRPC stream──  cmd/worker
 
 ## Reliability
 
-Jobs are written to Postgres and an outbox table atomically, then asynchronously relayed to Redis. That keeps Postgres as the source of truth and prevents jobs from being lost if the server crashes between persistence and enqueue.
+Jobs are persisted to Postgres and an outbox table atomically, then asynchronously relayed to Redis. Postgres remains the source of truth, so queued work can be recovered after failures.
 
-Failed jobs are retried with exponential backoff, while interrupted jobs are automatically recovered when the server restarts.
-
-## Common Commands
-
-```bash
-# Start the core processes locally
-task server
-task worker
-
-# Submit jobs
-task submit -- "echo hello world"
-task submit RETRIES=5 -- "go test ./..."
-
-# Inspect and control jobs
-task list
-task list STATUS=running
-task status -- <job-id>
-task cancel -- <job-id>
-
-# Workflow commands
-task workflow:list
-task trigger -- docker_demo
-task workflow:runs
-task workflow:status -- <run-id>
-task workflow:cancel -- <run-id>
-
-# Reset local queue + database state
-task cleanup
-```
-
-If you need to submit a raw JSON payload directly, use the advanced command:
-
-```bash
-task cli:submit PAYLOAD='{"command":"echo hello world"}'
-```
-
-## Docker
-
-Docker is the recommended local setup because it starts Postgres, Redis, the server, and the worker together.
-
-```bash
-task docker:logs
-task docker:ps
-task docker:down
-```
-
-Assuming the stack is already running via `task docker:up`, these commands help you inspect and manage it.
-
-To inspect the backing services directly:
-
-```bash
-docker compose exec postgres psql -U postgres orchestrator
-docker compose exec redis redis-cli
-```
-
-## Local Development
-
-If you want to run without Docker:
-
-```bash
-# Create database
-createdb -U postgres orchestrator
-
-# Copy env config
-cp .env.example .env
-
-# Apply migrations
-task migrate:up
-```
-
-Then start the server and worker in separate terminals:
-
-```bash
-# Terminal 1
-task server
-
-# Terminal 2
-task worker
-```
-
-`WORKER_COUNT` in `.env` controls how many worker goroutines the worker process spawns.
-
-For hot reload during development:
-
-```bash
-task dev:server
-task dev:worker
-```
+Failed jobs use exponential backoff retries, and interrupted jobs are recovered when the server restarts.
 
 ## Workflows
 
-Workflows are named sequences of shell commands executed in order. If any step fails, the workflow stops and the run is marked `failed`.
+Workflows are YAML files defining steps as shell commands. Steps execute in dependency order — steps with no `depends_on` run immediately; downstream steps run once all their dependencies complete. Drop `.yaml` files into the `workflows/` directory and restart the server.
 
-Workflow steps execute sequentially. If a step fails after exhausting its retries, the remaining steps are not scheduled.
+### DAG example
 
-Cron-triggered runs will not start if a previous run of the same workflow is still active. Manual triggers via the CLI or API are not subject to this check.
+```yaml
+name: nightly-backup
+schedule: "0 2 * * *"
+steps:
+  - id: backup-db
+    command: ./scripts/backup-db.sh
+  - id: backup-redis
+    command: ./scripts/backup-redis.sh
+  - id: compress
+    command: ./scripts/compress.sh
+    depends_on: [backup-db, backup-redis]
+  - id: upload
+    command: ./scripts/upload.sh
+    depends_on: [compress]
+```
 
-Drop `.yaml` files into the `workflows/` directory and restart the server. When using Docker, the directory is volume-mounted, so `docker compose restart server` is enough after changes.
+`backup-db` and `backup-redis` run in parallel. `compress` runs once both finish. `upload` runs last.
+
+Cron-triggered runs will not start if a previous run of the same workflow is still active.
 
 ### Output chaining
 
-Each step's stdout is available to the next step as the `$PREVIOUS_OUTPUT` environment variable. This lets you pipe data through a workflow without writing to intermediate files:
+When a step has exactly one dependency, that dependency's stdout is injected as `$PREVIOUS_OUTPUT`. Steps with zero or multiple dependencies receive an empty string. Output is capped at 64 KB — use the filesystem for large payloads.
 
-```yaml
-name: greet
-steps:
-  - command: echo "hello"
-  - command: echo "previous step said: $PREVIOUS_OUTPUT"
-  - command: printf "got '%s', forwarding\n" "$PREVIOUS_OUTPUT"
+## CLI
+
+```bash
+# Jobs
+orq submit --type=shell --command "echo hello world"
+orq list
+orq status <job-id>
+orq cancel <job-id>
+
+# Workflows
+orq workflow list
+orq workflow trigger <name>
+orq workflow runs
+orq workflow status <run-id>
+orq workflow cancel <run-id>
 ```
-
-The first step always receives an empty `$PREVIOUS_OUTPUT`. Output is capped at 64 KB before injection — `$PREVIOUS_OUTPUT` is not a data bus; use the filesystem for large payloads.
-
-### Format
-
-```yaml
-name: ci
-steps:
-  - command: go test ./...
-  - command: go build ./...
-```
-
-Example workflows included in `workflows/`:
-
-| File | What it does |
-|---|---|
-| `ci.yaml` | Runs `go test ./...` then `go build ./...` |
-| `docker_demo.yaml` | Queries the local Docker daemon (`ps`, `images`, `system df`) |
-| `data_pipeline.yaml` | Hits the GitHub REST API, downloads JSON, and parses a field |
 
 ## Testing
 
-The test suite has three tiers. Integration and end-to-end tests require local Postgres and Redis.
-
 ```bash
-task test
-task test:unit
-task test:integration
-task test:e2e
-```
-
-| Layer | Location | What it covers |
-|---|---|---|
-| Unit | `internal/workflow`, `internal/server`, `cmd/worker` | YAML parsing, workflow registry, backoff, `executeJob` output chaining |
-| DB integration | `internal/db`, `internal/outbox`, `internal/service` | Job CRUD, outbox lifecycle, crash recovery, workflow chaining payloads |
-| E2E | `e2e/` | Full job lifecycle, workflow output chaining, abort on failure, retry exhaustion |
-
-Unit tests always run offline. Integration and E2E tests are skipped automatically when dependencies are unavailable.
-
-## Migrations
-
-```bash
-task migrate:create NAME=<name>
-task migrate:up
-task migrate:down
-task migrate:version
+task test          # all tiers
+task test:unit     # offline only
+task test:e2e      # requires Postgres + Redis
 ```
 
 ## Configuration
@@ -241,26 +122,34 @@ task migrate:version
 | `DB_URL` | — | Postgres connection string |
 | `WORKER_COUNT` | — | Number of concurrent workers |
 | `REDIS_ADDR` | `localhost:6379` | Redis address |
-| `REDIS_PASSWORD` | — | Redis password |
-| `REDIS_DB` | `0` | Redis DB index |
-| `REDIS_QUEUE_NAME` | `jobs` | Redis key prefix for queues |
-| `GRPC_ADDR` | `:50051` | gRPC listen address (worker connections) |
-| `HTTP_ADDR` | `:8080` | REST API listen address (CLI and external tools) |
-| `ORQESTRA_API_KEY` | — | API key for CLI authentication (generate with `task keygen`) |
+| `GRPC_ADDR` | `:50051` | gRPC listen address |
+| `HTTP_ADDR` | `:8080` | REST API listen address |
+| `ORQESTRA_API_KEY` | — | API key for CLI authentication |
 
-The CLI reads `HTTP_ADDR`. If set to a listen-style value like `:8080`, it treats it as `localhost:8080`.
+## Development
 
-## Regenerating Proto
+### Local setup
 
-If you update `proto/orchestrator.proto`, regenerate the Go bindings with:
+```bash
+createdb -U postgres orchestrator
+cp .env.example .env
+task migrate:up
+task server   # Terminal 1
+task worker   # Terminal 2
+```
+
+### Migrations
+
+```bash
+task migrate:create NAME=<name>
+task migrate:up
+task migrate:down
+```
+
+### Proto regeneration
+
+Requires `protoc-gen-go` and `protoc-gen-go-grpc` in your `PATH`.
 
 ```bash
 task proto
-```
-
-You will need `protoc-gen-go` and `protoc-gen-go-grpc` in your `PATH`:
-
-```bash
-go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 ```
