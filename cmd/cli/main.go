@@ -30,15 +30,15 @@ func apiKey() string {
 
 func usage() {
 	fmt.Println("usage:")
-	fmt.Println("  go run ./cmd/cli submit [--type=<type>] [--command=<shell>] [--payload=<json>] [--retries=<n>]")
-	fmt.Println("  go run ./cmd/cli status <job-id>")
-	fmt.Println("  go run ./cmd/cli list [--status=<status>]")
-	fmt.Println("  go run ./cmd/cli cancel <job-id>")
-	fmt.Println("  go run ./cmd/cli workflow list")
-	fmt.Println("  go run ./cmd/cli workflow trigger <name>")
-	fmt.Println("  go run ./cmd/cli workflow runs")
-	fmt.Println("  go run ./cmd/cli workflow status <run-id>")
-	fmt.Println("  go run ./cmd/cli workflow cancel <run-id>")
+	fmt.Println("  orq submit [--type=<type>] [--command=<shell>] [--payload=<json>] [--retries=<n>]")
+	fmt.Println("  orq status <job-id>")
+	fmt.Println("  orq list [--status=<status>]")
+	fmt.Println("  orq cancel <job-id>")
+	fmt.Println("  orq workflow list")
+	fmt.Println("  orq workflow trigger <name>")
+	fmt.Println("  orq workflow runs")
+	fmt.Println("  orq workflow status <run-id>")
+	fmt.Println("  orq workflow cancel <run-id>")
 }
 
 func doJSON(method, url string, body any) (map[string]any, error) {
