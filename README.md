@@ -16,7 +16,7 @@ task docker:up
 task migrate:up
 
 # Generate an API key and add it to .env as ORQESTRA_API_KEY
-orqestra-keygen my-key
+orq-keygen my-key
 
 # Terminal 1
 task server

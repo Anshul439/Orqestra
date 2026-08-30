@@ -9,7 +9,7 @@ before:
 builds:
   - id: server
     main: ./cmd/server
-    binary: orqestra-server
+    binary: orq-server
     env:
       - CGO_ENABLED=0
     goos:
@@ -22,7 +22,7 @@ builds:
 
   - id: worker
     main: ./cmd/worker
-    binary: orqestra-worker
+    binary: orq-worker
     env:
       - CGO_ENABLED=0
     goos:
@@ -48,7 +48,7 @@ builds:
 
   - id: keygen
     main: ./cmd/keygen
-    binary: orqestra-keygen
+    binary: orq-keygen
     env:
       - CGO_ENABLED=0
     goos:
